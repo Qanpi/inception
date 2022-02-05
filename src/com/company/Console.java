@@ -9,13 +9,21 @@ import java.awt.*;
 
 class Console {
     static String newLine = "\n";
-    static JTextPane component = new JTextPane();
+    static private JTextPane component;
 
-    static JTextPane getComponent() {
+    Console () {
+        component = new JTextPane();
+        component.setEditable(false);
+    }
+
+
+    JTextPane getComponent() {
         return component;
     }
 
-    private static void log(String msg, SimpleAttributeSet sas) {
+    static private void log(String msg, SimpleAttributeSet sas) {
+        if (component == null) throw new NullPointerException("The console component has not been initialized.");
+
         try {
             Document doc = component.getDocument();
             doc.insertString(doc.getLength(), msg + newLine, sas);

@@ -1,83 +1,158 @@
 package com.company;
 
+import javax.swing.*;
+import java.awt.event.ActionEvent;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileSystems;
-import java.nio.file.PathMatcher;
-
-/*
-& "C:\Program Files\JetBrains\IntelliJ IDEA Community Edition 2021.2.3\jbr\bin\javac.exe" .\Main.java
-& "C:\Program Files\JetBrains\IntelliJ IDEA Community Edition 2021.2.3\jbr\bin\java.exe" -classpath "C:\Users\aleks\OneDrive - Suomalaisen Yhteiskoulun Osakeyhtiö\Tiedostot\School\Pre-IB\Term 3\ComSci\Lesson8\out\production\Lesson8" com.company.Main
-
- */
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Scanner;
 
 class Runner {
-    private String javaPath;
-    private String javacPath;
+    private File jdkPath;
 
+    Runner () {
+        //Try the first automatic method
+        jdkPath = searchForJDK();
 
+        //Try the second automatic method
+        if(jdkPath == null) jdkPath = searchUsingWhere();
+    }
 
-    void checkCommonJDKPath() {
-        //Try to find the location of java development kit automatically
-        File jdk = null;
+    public void run(File f) {
+        if(f == null) {
+            Console.logErr("No file is currently open.");
+            return;
+        } else if (jdkPath == null) {
+            jdkPath = manualPathToJDK();
+            return;
+        }
 
-        //Method 1 - checking for the "C:/Users/<user.name>/.jdks/openjdk-17.0.1" directory
-        File dir = new File(System.getProperty("user.home") + "/.jdks/");
-        String p = dir.getPath().replace("\\", "/");
-        String pat = "glob:"+p+"/openjdk*";
-        PathMatcher pm = FileSystems.getDefault().getPathMatcher(pat);
-        System.out.println(pat);
+        File compiledFile = compile(f);
+        execute(compiledFile);
+    }
 
-        //Objects.requireNonNull because the IDE suggested it
-        for (File f1 : dir.listFiles()) {
-            if(f1.isDirectory()) {
-                for (File f2 : f1.listFiles()) {
-                    System.out.println(f2);
-                    System.out.println(pm.matches(f2.toPath()));
+    private File compile(File f) {
+        try {
+            File javac = new File(jdkPath + "/javac.exe");
+            String command = String.format("\"%s\" \"%s\"", javac, f);
+
+            Process pro = Runtime.getRuntime().exec(command);
+            pro.waitFor(); //wait until the process terminates
+
+            File classFile = new File(f.getParentFile() + "/" + f.getName().replace(".java", ".class"));
+            return classFile;
+        } catch (IOException | InterruptedException e) {
+            Console.logErr("Unable to compile the file. Process interrupted. ");
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private void execute(File compiled) {
+        try {
+            File java = new File(jdkPath + "/java.exe");
+            File classPath = new File(compiled.getPath().replace(".class", ""));
+            String filePath = "";
+
+            //go up until in the file structure until "src" folder
+            while(!classPath.getName().equals("src")) {
+                if (classPath.getParentFile() != null) {
+                    filePath = classPath.getName() + "." + filePath;
+                    classPath = classPath.getParentFile();
+                }
+                else {
+                    Console.logErr("Please place your .java file in the 'src/' directory");
+                    return;
+                }
+            };
+            filePath = filePath.substring(0, filePath.length()-1); //dirty fix to remove the extra "." at the end
+
+            String command = String.format("\"%s\" -cp \"%s\" %s", java, classPath, filePath);
+            Process pro = Runtime.getRuntime().exec(command);
+
+            try(Scanner sc = new Scanner(pro.getInputStream())) {
+                while (sc.hasNextLine()) {
+                    Console.log(sc.nextLine());
+                }
+            } catch (Exception e) {
+                Console.logErr("Error while trying to read from the compiled program.");
+                e.printStackTrace();
+            }
+
+            pro.waitFor();
+
+        } catch (IOException | InterruptedException e) {
+            Console.logErr("Unable to execute the compiled file.");
+            e.printStackTrace();
+        }
+    }
+
+    private File manualPathToJDK() {
+        JFileChooser fc = new JFileChooser();
+        fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        fc.setDialogTitle("Please a provide a path to the JDK folder");
+
+        int returnVal = -1;
+        while (returnVal == -1 || returnVal == JFileChooser.APPROVE_OPTION) {
+            JOptionPane.showMessageDialog(fc, "Please provide the path to the JDK/bin folder manually.",
+                    "The program was not able to locate the JDK.", JOptionPane.ERROR_MESSAGE);
+            returnVal = fc.showOpenDialog(null);
+
+            File dir = fc.getSelectedFile();
+            if (new File(dir + "/java.exe").exists()
+                    &&  new File(dir + "/javac.exe").exists()) return dir;
+        }
+        return null;
+    }
+
+    private File searchForJDK() {
+        String[] commonPaths = {System.getProperty("user.home") + "/.jdks/",
+                                "C:/Program Files/Java/",
+                                "C:/Program Files (x86)/Java/"};
+
+        for (String path : commonPaths) {
+            File baseDir = new File(path);
+            for (File f1 : baseDir.listFiles()) {
+                if (f1.isDirectory()) { //check in all directories
+                    File jdkBin = new File(f1.getPath() + "/bin/");
+                    File java = new File(jdkBin + "/java.exe"), javac = new File(jdkBin + "/javac.exe");
+
+                    if (java.exists() && javac.exists()) return jdkBin;
                 }
             }
         }
-//            System.out.println(Path.of(f1.getAbsolutePath()));
-//            if(pm.matches(Path.of(f.getAbsolutePath()))) System.out.println("YAYA" + f.getName());
-////            if (f.getName().contains("openjdk") && f.isDirectory()) jdk = f;
-        }
+        return null;
+    }
 
-//    File usingWhereCommand() {
-//        //The following only works if java is included in the Path enviroment variable
-//        //Only works if java and javac are included into path
-//        try {
-//            Process pro = Runtime.getRuntime().exec("where javac.exe");
-//            return pro.inputReader().readLine();
-//        } catch (IOException e) {
-//            System.err.println("An error has occurred while trying to find" + prg);
-//            e.printStackTrace();
-//        } return null;
-//    }
-
-
-    private String autoFindPath(String prg) {
-        String path = null;
-        //Try to find the location of java compiler
+    private File searchUsingWhere() {
+        //The following only works if java is included in the Path enviroment variable
         try {
-            Process pro = Runtime.getRuntime().exec("where " + prg);
-            path = pro.inputReader().readLine();
-        } catch (IOException e) {
-            System.err.println("An error has occurred while trying to find" + prg);
+            //Very scary looking code
+            Process java = Runtime.getRuntime().exec("where.exe java.exe"); //runs console command "where.exe java.exe"
+            HashSet<String> javaPaths = new HashSet<>(java.inputReader().lines().map(
+                    s -> s.replace("java.exe", "")
+            ).toList()); //gets output from the command and parses the paths;
+            // stores in a hashset so that duplicates can later be identified, since multiple paths can be present for java.exe
+
+            Process javac = Runtime.getRuntime().exec("where.exe javac.exe"); //runs console command "where.exe javac.exe"
+            ArrayList<String> javacPaths = new ArrayList<>(javac.inputReader().lines().map(
+                    s -> s.replace("javac.exe", "")
+            ).toList()); //gets output from the command and parses the paths;
+            //stores in an arraylist to iterate over the elements and attempt to add them to the hashset, thus finding duplicates.
+
+            //returns the duplicates from two paths lists, if present
+            for (int i=0; i<javacPaths.size(); i++) {
+                if (!javaPaths.add(javacPaths.get(i))) {
+                    return new File(javacPaths.get(i));
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("An error has occurred while trying to search for JDK path using where.exe");
             e.printStackTrace();
-            System.exit(1);
-        }
-
-        //If where command fails
-        if (path == null)  {
-            System.err.println("Unable to find path to the program automatically, asking for user input");
-            Console.logErr("Unable to find path to " + prg + " automatically. Please select the corresponding file manually.");
-            return manualFindPath(prg);
-        }
-        return path;
+        } return null;
     }
 
-    private String manualFindPath(String prg) {
 
-        return "test";
-    }
 }

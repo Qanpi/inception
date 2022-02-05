@@ -1,8 +1,8 @@
 package com.company;
 
 import javax.swing.*;
-import javax.swing.filechooser.FileFilter;
-import javax.swing.text.*;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.StyleConstants;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.File;
@@ -10,22 +10,26 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 
-
 public class Inception extends JFrame {
-    JTextPane editor;
-    JFileChooser fileChooser;
+    private final JTextPane editor;
+    private final Console console;
+    private Runner runner;
+    private File currentFile;
 
     Inception() {
+        super("Inception");
         //Create the main editor text pane
         editor = new JTextPane();
         //and the scroll pane for it
         JScrollPane editorScrollPane = new JScrollPane(editor);
-        editorScrollPane.setPreferredSize(new Dimension(500, 300));
+        editorScrollPane.setPreferredSize(new Dimension(600, 300));
 
         //Create the console uneditable text pane
         //and the scroll pane for it
-        JScrollPane consoleScrollPane = new JScrollPane(Console.getComponent());
+        console = new Console();
+        JScrollPane consoleScrollPane = new JScrollPane(console.getComponent());
         consoleScrollPane.setPreferredSize(new Dimension(300, 200));
+
 
         //Split pane between editor and console - allows the panes to be resized
         JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, editorScrollPane, consoleScrollPane);
@@ -36,12 +40,6 @@ public class Inception extends JFrame {
 
         //Create the menu bar at the top of the screen
         setJMenuBar(createMenuBar());
-
-        //Create the file chooser to allow user to open/save files
-        fileChooser = new JFileChooser(System.getProperty("user.dir")); //open current directory initially
-        fileChooser.addChoosableFileFilter(new JavaExtensionFilter());
-        fileChooser.addChoosableFileFilter(new TextExtensionFilter());
-        fileChooser.setAcceptAllFileFilterUsed(false); //disallow user to open a file of any other extension
     }
 
     private JMenuBar createMenuBar() {
@@ -51,12 +49,20 @@ public class Inception extends JFrame {
         fileMenu.add(new OpenFileAction());
         fileMenu.add(new SaveFileAction());
 
-//        JMenu editMenu = new JMenu("Edit");
+        JMenu codeMenu = new JMenu("Code");
+        codeMenu.add(new RunAction());
 
         mb.add(fileMenu);
+        mb.add(codeMenu);
 
         return mb;
     }
+
+    private void updateCurrentFile(File f) {
+        currentFile = f;
+        setTitle(currentFile.getName());
+    }
+
 
     class OpenFileAction extends AbstractAction {
         public OpenFileAction() {
@@ -65,12 +71,18 @@ public class Inception extends JFrame {
 
         @Override
         public void actionPerformed(ActionEvent ev) {
-            int returnVal = fileChooser.showOpenDialog(null);
+            String openPath = currentFile == null ? System.getProperty("user.dir") : currentFile.getPath();
+            JFileChooser fc = new JFileChooser(openPath); //open current directory initially
+            fc.setFileFilter(new JavaExtensionFilter());
+            fc.setAcceptAllFileFilterUsed(false);
+
+            int returnVal = fc.showOpenDialog(null);
 
             if (returnVal == JFileChooser.APPROVE_OPTION) {
-                File f = fileChooser.getSelectedFile();
+                File f = fc.getSelectedFile();
                 try {
                     editor.setPage(f.toURI().toURL());
+                    updateCurrentFile(f);
                 } catch (FileNotFoundException e) {
                     Console.logErr("Requested file not found.");
                     e.printStackTrace();
@@ -89,14 +101,19 @@ public class Inception extends JFrame {
 
         @Override
         public void actionPerformed(ActionEvent ev) {
-            int returnVal = fileChooser.showSaveDialog(null);
+            String openPath = currentFile == null ? System.getProperty("user.dir") : currentFile.getPath();
+            JFileChooser fc = new JFileChooser(openPath); //open current file location
+            fc.setFileFilter(new JavaExtensionFilter());
+            fc.setAcceptAllFileFilterUsed(false);
+
+            int returnVal = fc.showSaveDialog(null);
 
             if (returnVal == JFileChooser.APPROVE_OPTION) {
-                String ext = fileChooser.getFileFilter().getDescription();
-                File f = fileChooser.getSelectedFile();
+                String ext = fc.getFileFilter().getDescription();
+                File f = fc.getSelectedFile();
 
                 if (!f.getName().contains(ext)) //in case the file name is given as just "file" (with no .ext)
-                    f = new File(fileChooser.getSelectedFile() + ext);
+                    f = new File(fc.getSelectedFile() + ext);
 
                 try (FileWriter fw = new FileWriter(f)) {
                     fw.write(editor.getText());
@@ -104,21 +121,33 @@ public class Inception extends JFrame {
                     Console.logErr("Unable to save the editor contents to the provided file.");
                     e.printStackTrace();
                 }
+                updateCurrentFile(f);
             }
         }
     }
+
+    class RunAction extends AbstractAction {
+        RunAction() {
+            super("Run");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if (runner == null) runner = new Runner();
+            runner.run(currentFile);
+        }
+    }
+
 
     public static void main(String[] args) {
         //I just copy-pasted the following from an example...
 
         // Schedule a job for the event dispatch thread:
         //creating and showing this application's GUI.
-        SwingUtilities.invokeLater(new Runnable() {
-            public void run() {
-                //Turn off metal's use of bold fonts
-                UIManager.put("swing.boldMetal", Boolean.FALSE);
-                createAndShowGUI();
-            }
+        SwingUtilities.invokeLater(() -> {
+            //Turn off metal's use of bold fonts
+            UIManager.put("swing.boldMetal", Boolean.FALSE);
+            createAndShowGUI();
         });
     }
 
@@ -130,7 +159,6 @@ public class Inception extends JFrame {
         IDE.pack();
         IDE.setVisible(true);
     }
-
 }
 
 
