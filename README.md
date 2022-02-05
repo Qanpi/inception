@@ -19,7 +19,7 @@ writing code for you, I'd write code for you in which you could write your own c
 Hereafter comes documentation. I'll try to follow your layout, and also keep it brief
 cause I really barely left my house today.
 
-###Target grade: 3
+### Target grade: 3
 Although, i'm not so sure anymore considering how sloppy some of the code is.
 
 
@@ -72,7 +72,7 @@ Although, i'm not so sure anymore considering how sloppy some of the code is.
 
 
 ### Test Case
-####Simple example
+#### Simple example
 1. Download the entire project from github as a .zip file.
 2. Unzip into a directory, and open in Intellij IDEA (or any other IDE, unfortunately, mine doesn't support multiple files yet).
 3. Configure the Intellij run configuration to Inception.java as the main class, if necessary.
@@ -91,7 +91,7 @@ Have you watched the Inception? If so, the name of this program may hint at what
 3. Click *Code -> Run*: You should see... **(drumroll)** ...the exact same window of this IDE appear again 🤯🤯🤯
 4. Feel free to open another IDE from the new IDE, edit the code, or mess around in any other way possible.
 
-#####Bonus
+##### Bonus
 Consider the following
 1. Run Inception from Intellij normally
 ![img.png](img/1.png)
@@ -107,7 +107,7 @@ Consider the following
 7. Close the just opened instance of Inception.
 ![img_4.png](img/6.png)
 
-###Exception handling
+### Exception handling
 There is a lot to unpack here, and I'm sure a lot of it is nowhere near perfect.
 - Unable to automatically find path to JDK: prompt manual user input.
 - User does not enter valid JDK path: keep prompting.
@@ -120,7 +120,7 @@ There is a lot to unpack here, and I'm sure a lot of it is nowhere near perfect.
 - .java file outside of a src file: prompt user to reposition file. 
 - and of course a lot more possibilities which I probably haven't even considered.
 
-###Resource management
+### Resource management
 All resources (I think) are opened, handled and disposed of properly. This includes
 - FileWriter
 - Scanner
@@ -128,9 +128,10 @@ All resources (I think) are opened, handled and disposed of properly. This inclu
 - JSwing Component
 - Process
 
-##Known problems
+## Known problems
 - **Exceptions that happen in the .java files ran by Intellij IDEA are not handled in any way - the code remains completely silent. This is just terrible, I know.** 
 - nothing (in a bad way) happens when the .java file to run contains an input prompt (such as a Scanner)
+- tab spacing in the editor doesn't match up with that of the file
 - no support for multiple java files
 - code runs synchronously, i.e. when a .java is being run, the IDE freezes
 - only able to run .java files placed inside a /src/ folder
