@@ -1,8 +1,6 @@
-package com.company;
+package com.qanpi;
 
 import javax.swing.*;
-import javax.swing.text.SimpleAttributeSet;
-import javax.swing.text.StyleConstants;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.File;
@@ -11,8 +9,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 public class Inception extends JFrame {
-    private final JTextPane editor;
-    private final Console console;
+    private JTextPane editor;
+    private Console console;
     private Runner runner;
     private File currentFile;
 

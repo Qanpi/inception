@@ -1,4 +1,4 @@
-package com.company;
+package com.qanpi;
 
 import javax.swing.filechooser.FileFilter;
 import java.io.File;

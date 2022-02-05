@@ -1,4 +1,4 @@
-package com.company;
+package com.qanpi;
 
 import javax.swing.*;
 import javax.swing.text.BadLocationException;

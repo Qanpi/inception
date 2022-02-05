@@ -1,8 +1,6 @@
-package com.company;
+package com.qanpi;
 
 import javax.swing.*;
-import java.awt.event.ActionEvent;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -37,6 +35,7 @@ class Runner {
         try {
             File javac = new File(jdkPath + "/javac.exe");
             String command = String.format("\"%s\" \"%s\"", javac, f);
+            System.out.println(command);
 
             Process pro = Runtime.getRuntime().exec(command);
             pro.waitFor(); //wait until the process terminates
@@ -63,13 +62,15 @@ class Runner {
                     classPath = classPath.getParentFile();
                 }
                 else {
-                    Console.logErr("Please place your .java file in the 'src/' directory");
+                    Console.logErr("Please place your .java file in a 'src/' directory");
                     return;
                 }
             };
             filePath = filePath.substring(0, filePath.length()-1); //dirty fix to remove the extra "." at the end
 
             String command = String.format("\"%s\" -cp \"%s\" %s", java, classPath, filePath);
+            System.out.println(command);
+
             Process pro = Runtime.getRuntime().exec(command);
 
             try(Scanner sc = new Scanner(pro.getInputStream())) {
