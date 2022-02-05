@@ -1,5 +1,4 @@
 # Default ignored files
 /shelf/
 /workspace.xml
-/out/
-/src/com/company/Runner.java
+../out/
