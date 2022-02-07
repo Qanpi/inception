@@ -22,6 +22,7 @@ public class Inception extends JFrame {
 
     Inception() {
         super("Inception");
+System.out.println("new line just added");
 System.out.println("adding a new line...");
         //Create the main editor text pane
         editor = new JTextPane();

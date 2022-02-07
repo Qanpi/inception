@@ -33,7 +33,7 @@ class Runner {
 
     private File compile(File f) {
         try {
-            File javac = new File(jdkPath + "/javac.exe");
+            File javac = new File(jdkPath + "/javac");
             String command = String.format("\"%s\" \"%s\"", javac, f);
             System.out.println(command);
 
@@ -51,7 +51,7 @@ class Runner {
 
     private void execute(File compiled) {
         try {
-            File java = new File(jdkPath + "/java.exe");
+            File java = new File(jdkPath + "/java");
             File classPath = new File(compiled.getPath().replace(".class", ""));
             String filePath = "";
 
@@ -102,8 +102,8 @@ class Runner {
             returnVal = fc.showOpenDialog(null);
 
             File dir = fc.getSelectedFile();
-            if (new File(dir + "/java.exe").exists()
-                    &&  new File(dir + "/javac.exe").exists()) return dir;
+            if (new File(dir + "/java").exists()
+                    &&  new File(dir + "/javac").exists()) return dir;
         }
         return null;
     }
@@ -115,10 +115,11 @@ class Runner {
 
         for (String path : commonPaths) {
             File baseDir = new File(path);
+            if(baseDir.isDirectory() == false) continue;
             for (File f1 : baseDir.listFiles()) {
                 if (f1.isDirectory()) { //check in all directories
                     File jdkBin = new File(f1.getPath() + "/bin/");
-                    File java = new File(jdkBin + "/java.exe"), javac = new File(jdkBin + "/javac.exe");
+                    File java = new File(jdkBin + "/java"), javac = new File(jdkBin + "/javac");
 
                     if (java.exists() && javac.exists()) return jdkBin;
                 }
