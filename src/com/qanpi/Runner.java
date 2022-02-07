@@ -7,13 +7,25 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Scanner;
 
+
 class Runner {
     private File jdkPath;
+    private OS operatingSystem;
+
+    private enum OS {
+        Windows,
+        Linux
+    }
 
     Runner () {
+        //Determine the OS of the user
+        String os = System.getProperty("os.name");
+        if(os.startsWith("Windows")) operatingSystem = OS.Windows;
+        else if (os.startsWith("Linux")) operatingSystem = OS.Linux;
+        else throw new RuntimeException("Unsupported operating system.");
+
         //Try the first automatic method
         jdkPath = searchForJDK();
-
         //Try the second automatic method
         if(jdkPath == null) jdkPath = searchUsingWhere();
     }
@@ -32,16 +44,18 @@ class Runner {
     }
 
     private File compile(File f) {
+        String ext = "";
+        if(operatingSystem == OS.Windows) ext = ".exe";
+        else
         try {
-            File javac = new File(jdkPath + "/javac");
-            String command = String.format("\"%s\" \"%s\"", javac, f);
+            File javac = new File(jdkPath + "/javac" + ext);
+            String command = String.format("%s %s", javac, f);
             System.out.println(command);
 
             Process pro = Runtime.getRuntime().exec(command);
             pro.waitFor(); //wait until the process terminates
 
-            File classFile = new File(f.getParentFile() + "/" + f.getName().replace(".java", ".class"));
-            return classFile;
+            return new File(f.getParentFile() + "/" + f.getName().replace(".java", ".class"));
         } catch (IOException | InterruptedException e) {
             Console.logErr("Unable to compile the file. Process interrupted. ");
             e.printStackTrace();
