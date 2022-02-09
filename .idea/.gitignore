@@ -1,0 +1,4 @@
+../out/
+workspace.xml
+vcs.xml
+../test/src/*.class
