@@ -11,7 +11,7 @@ import java.io.IOException;
 public class Inception extends JFrame {
     private JTextPane editor;
     private Console console;
-    private Runner runner;
+    private RunConfiguration runner;
     private File currentFile;
 
     Inception() {
@@ -131,8 +131,13 @@ public class Inception extends JFrame {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            if (runner == null) runner = new Runner();
-            runner.run(currentFile);
+            if (runner == null) runner = new RunConfiguration();
+            try {
+                runner.run(currentFile);
+            } catch (IOException | InterruptedException ex) {
+                ex.printStackTrace();
+                System.exit(9);
+            }
         }
     }
 
