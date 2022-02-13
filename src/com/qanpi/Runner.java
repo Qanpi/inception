@@ -10,7 +10,7 @@ import java.util.Scanner;
 
 class Runner {
     private File jdkPath;
-    private OS operatingSystem;
+    private final OS operatingSystem;
 
     private enum OS {
         Windows,
