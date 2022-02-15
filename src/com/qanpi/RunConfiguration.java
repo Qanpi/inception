@@ -3,41 +3,22 @@ package com.qanpi;
 import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.PathMatcher;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Scanner;
-
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 
 class RunConfiguration {
     private File jdkPath;
-    private final OS OP_SYSTEM;
     private final String EXT;
+    private final OS OP_SYSTEM;
 
-    RunConfiguration() {
-        OP_SYSTEM = determineOS();
-        EXT = determineEXT();
+    RunConfiguration(OS os) {
+        OP_SYSTEM = os;
+        EXT = (OP_SYSTEM == OS.Windows) ? ".exe" : "";
         searchForJDK();
-    }
-
-    private enum OS {
-        Windows,
-        Linux
-    }
-
-    private OS determineOS() {
-        //Determine and store the OS of the user
-        String os = System.getProperty("os.name");
-        if(os.startsWith("Windows")) return OS.Windows;
-        else if (os.startsWith("Linux")) return OS.Linux;
-        else throw new RuntimeException("Unsupported operating system.");
-    }
-
-    private String determineEXT() {
-        if (OP_SYSTEM == OS.Windows) return ".exe";
-        else return "";
     }
 
     private void searchForJDK() {
@@ -96,6 +77,7 @@ class RunConfiguration {
 
         File compiledFile = compile(f);
         execute(compiledFile);
+        Console.log("test2");
     }
 
     private File compile(File f) throws IOException, InterruptedException {
@@ -129,20 +111,28 @@ class RunConfiguration {
         ProcessBuilder pb = new ProcessBuilder(java.getAbsolutePath(), "-cp",  classPath.getAbsolutePath(), packagePath);
         Process pro = pb.start();
 
-        try(Scanner sc = new Scanner(pro.getInputStream())) {
-            while (sc.hasNextLine()) {
-                String test = sc.nextLine();
-                Console.log(test);
-            }
-        } catch (Exception e) {
-            Console.logErr("Error while trying to read from the compiled program.");
-            e.printStackTrace();
-        }
+        ExecutorService codeRunner = Executors.newSingleThreadExecutor();
 
-        pro.waitFor();
+        Supplier<String> getOutput = () -> {
+            try(Scanner sc = new Scanner(pro.getInputStream())) {
+                while (sc.hasNextLine()) {
+                    Console.log(sc.nextLine());
+                }
+            } catch (Exception e) {
+                Console.logErr("Error while trying to read from the compiled program.");
+                e.printStackTrace();
+            }
+            return null;
+        };
+
+        CompletableFuture<String> future = CompletableFuture.supplyAsync(getOutput, codeRunner);
+        future.thenAccept(string -> Console.log(string));
+        Console.log("test");
+
+//        pro.waitFor();
     }
 
-
+    private
 }
 
 

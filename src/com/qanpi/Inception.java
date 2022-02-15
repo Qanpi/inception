@@ -7,15 +7,32 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.MalformedURLException;
+
+enum OS {
+    Windows,
+    Linux
+}
 
 public class Inception extends JFrame {
     private JTextPane editor;
     private Console console;
     private RunConfiguration runner;
+
     private File currentFile;
+    private final OS OP_SYSTEM;
+
+    private OS determineOS() {
+        //Determine and store the OS of the user
+        String os = System.getProperty("os.name");
+        if(os.startsWith("Windows")) return OS.Windows;
+        else if (os.startsWith("Linux")) return OS.Linux;
+        else throw new RuntimeException("Unsupported operating system.");
+    }
 
     Inception() {
         super("Inception");
+        OP_SYSTEM = determineOS();
         //Create the main editor text pane
         editor = new JTextPane();
         //and the scroll pane for it
@@ -38,6 +55,11 @@ public class Inception extends JFrame {
 
         //Create the menu bar at the top of the screen
         setJMenuBar(createMenuBar());
+        try {
+            openFile(new File("./test/src/HelloWorld.java"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private JMenuBar createMenuBar() {
@@ -54,6 +76,11 @@ public class Inception extends JFrame {
         mb.add(codeMenu);
 
         return mb;
+    }
+
+    private void openFile(File f) throws IOException {
+        editor.setPage(f.toURI().toURL());
+        updateCurrentFile(f);
     }
 
     private void updateCurrentFile(File f) {
@@ -79,8 +106,7 @@ public class Inception extends JFrame {
             if (returnVal == JFileChooser.APPROVE_OPTION) {
                 File f = fc.getSelectedFile();
                 try {
-                    editor.setPage(f.toURI().toURL());
-                    updateCurrentFile(f);
+                    openFile(f);
                 } catch (FileNotFoundException e) {
                     Console.logErr("Requested file not found.");
                     e.printStackTrace();
@@ -131,9 +157,10 @@ public class Inception extends JFrame {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            if (runner == null) runner = new RunConfiguration();
+            if (runner == null) runner = new RunConfiguration(OP_SYSTEM);
             try {
                 runner.run(currentFile);
+                Console.log("test3");
             } catch (IOException | InterruptedException ex) {
                 ex.printStackTrace();
                 System.exit(9);
