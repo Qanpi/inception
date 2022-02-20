@@ -16,7 +16,6 @@ class Console {
         component.setEditable(false);
     }
 
-
     JTextPane getComponent() {
         return component;
     }

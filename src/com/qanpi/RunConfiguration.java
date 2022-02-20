@@ -3,22 +3,107 @@ package com.qanpi;
 import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Scanner;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 
-class RunConfiguration {
-    private File jdkPath;
-    private final String EXT;
-    private final OS OP_SYSTEM;
 
-    RunConfiguration(OS os) {
-        OP_SYSTEM = os;
-        EXT = (OP_SYSTEM == OS.Windows) ? ".exe" : "";
+class Runner {
+    private final OS OS;
+    private final String EXT;
+    private File jdkPath;
+
+
+    enum OS {
+        Windows,
+        Linux
+    }
+
+    Runner () {
+        OS = getOS();
+        EXT = (OS == OS.Windows) ? ".exe" : "";
         searchForJDK();
+    }
+
+    private OS getOS() {
+        //Determine and store the OS of the user
+        String osName = System.getProperty("os.name");
+        if(osName.startsWith("Windows")) return OS.Windows;
+        else if (osName.startsWith("Linux")) return OS.Linux;
+        else throw new RuntimeException("Unsupported operating system.");
+    }
+
+    public void run(File f) throws IOException, InterruptedException {
+        //TODO: replace this with project structure
+        if(f == null) {
+            Console.logErr("No file is currently open.");
+            return;
+        }
+
+        if (jdkPath == null) {
+            JOptionPane.showMessageDialog(null, "Please provide the path to the JDK folder manually.",
+                    "Path not found", JOptionPane.ERROR_MESSAGE);
+            manualPathToJDK();
+            return;
+        }
+
+        CompletableFuture<File> compile = CompletableFuture.supplyAsync(compile(f));
+        CompletableFuture<Process> run = compile.thenApply(cf -> execute(cf));
+        run.thenAccept(pro -> readProcess(pro));
+//        File compiledFile = compile(f);
+//        execute(compiledFile);
+        Console.log("test2");
+    }
+
+    private Supplier<File> compile(File f) {
+        return () -> {
+            File javac = new File(jdkPath + "/bin/javac" + EXT);
+            ProcessBuilder pb = new ProcessBuilder(javac.getAbsolutePath(), f.getAbsolutePath());
+
+            try {
+                pb.start();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            return new File(f.getParentFile() + "/" + f.getName().replace(".java", ".class")); //TODO: clarify this
+        };
+    }
+
+    private Process execute(File f) {
+        File java = new File(jdkPath + "/bin/java");
+        //TODO: maybe split into separate methods
+        File classPath = new File(f.getPath().replace(".class", "")); //path to the .class file folder
+        String packagePath = ""; //e.g. com.company.Class
+
+        //go up until in the file structure until "src" folder
+        while (!classPath.getName().equals("src")) {
+            if (classPath.getParentFile() != null) {
+                packagePath = classPath.getName() + "." + packagePath;
+                classPath = classPath.getParentFile();
+            } else {
+                Console.logErr("Please place your .java file in a 'src/' directory");
+            }
+        }
+        ;
+        packagePath = packagePath.substring(0, packagePath.length() - 1); //remove the extra "." at the end of the package path
+
+        ProcessBuilder pb = new ProcessBuilder(java.getAbsolutePath(), "-cp", classPath.getAbsolutePath(), packagePath);
+        try {
+            return pb.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private void readProcess(Process pro) {
+        InputStream is = pro.getInputStream();
+        Scanner sc = new Scanner(is);
+        while (sc.hasNextLine()) {
+            Console.log(sc.nextLine());
+        }
     }
 
     private void searchForJDK() {
@@ -60,79 +145,6 @@ class RunConfiguration {
             }
         }
     }
-
-    public void run(File f) throws IOException, InterruptedException {
-        //TODO: replace this with project structure
-        if(f == null) {
-            Console.logErr("No file is currently open.");
-            return;
-        }
-
-        if (jdkPath == null) {
-            JOptionPane.showMessageDialog(null, "Please provide the path to the JDK folder manually.",
-                    "Path not found", JOptionPane.ERROR_MESSAGE);
-            manualPathToJDK();
-            return;
-        }
-
-        File compiledFile = compile(f);
-        execute(compiledFile);
-        Console.log("test2");
-    }
-
-    private File compile(File f) throws IOException, InterruptedException {
-        File javac = new File(jdkPath + "/bin/javac" + EXT);
-        ProcessBuilder pb = new ProcessBuilder(javac.getAbsolutePath(), f.getAbsolutePath());
-
-        Process pro = pb.start();
-        pro.waitFor(); //wait until the process terminates
-
-        return new File(f.getParentFile() + "/" + f.getName().replace(".java", ".class")); //TODO: clarify this
-    }
-
-    private void execute(File f) throws InterruptedException, IOException {
-        File java = new File(jdkPath + "/bin/java");
-        //TODO: maybe split into separate methods
-        File classPath = new File(f.getPath().replace(".class", "")); //path to the .class file folder
-        String packagePath = ""; //e.g. com.company.Class
-
-        //go up until in the file structure until "src" folder
-        while(!classPath.getName().equals("src")) {
-            if (classPath.getParentFile() != null) {
-                packagePath = classPath.getName() + "." + packagePath;
-                classPath = classPath.getParentFile();
-            } else {
-                Console.logErr("Please place your .java file in a 'src/' directory");
-                return;
-            }
-        };
-        packagePath = packagePath.substring(0, packagePath.length()-1); //remove the extra "." at the end of the package path
-
-        ProcessBuilder pb = new ProcessBuilder(java.getAbsolutePath(), "-cp",  classPath.getAbsolutePath(), packagePath);
-        Process pro = pb.start();
-
-        ExecutorService codeRunner = Executors.newSingleThreadExecutor();
-
-        Supplier<String> getOutput = () -> {
-            try(Scanner sc = new Scanner(pro.getInputStream())) {
-                while (sc.hasNextLine()) {
-                    Console.log(sc.nextLine());
-                }
-            } catch (Exception e) {
-                Console.logErr("Error while trying to read from the compiled program.");
-                e.printStackTrace();
-            }
-            return null;
-        };
-
-        CompletableFuture<String> future = CompletableFuture.supplyAsync(getOutput, codeRunner);
-        future.thenAccept(string -> Console.log(string));
-        Console.log("test");
-
-//        pro.waitFor();
-    }
-
-    private
 }
 
 

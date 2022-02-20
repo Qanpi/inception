@@ -7,32 +7,20 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.MalformedURLException;
 
-enum OS {
-    Windows,
-    Linux
-}
 
 public class Inception extends JFrame {
     private JTextPane editor;
     private Console console;
-    private RunConfiguration runner;
+    private Runner runner;
 
     private File currentFile;
-    private final OS OP_SYSTEM;
-
-    private OS determineOS() {
-        //Determine and store the OS of the user
-        String os = System.getProperty("os.name");
-        if(os.startsWith("Windows")) return OS.Windows;
-        else if (os.startsWith("Linux")) return OS.Linux;
-        else throw new RuntimeException("Unsupported operating system.");
-    }
 
     Inception() {
         super("Inception");
-        OP_SYSTEM = determineOS();
+
+        runner = new Runner();
+
         //Create the main editor text pane
         editor = new JTextPane();
         //and the scroll pane for it
@@ -45,18 +33,17 @@ public class Inception extends JFrame {
         JScrollPane consoleScrollPane = new JScrollPane(console.getComponent());
         consoleScrollPane.setPreferredSize(new Dimension(300, 200));
 
-
         //Split pane between editor and console - allows the panes to be resized
         JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, editorScrollPane, consoleScrollPane);
         splitPane.setOneTouchExpandable(true);
         splitPane.setResizeWeight(1); //so that the console doesn't shrink with the window
 
         add(splitPane, BorderLayout.CENTER);
-
-        //Create the menu bar at the top of the screen
         setJMenuBar(createMenuBar());
+
+        //ONLY FOR DEBUG
         try {
-            openFile(new File("./test/src/HelloWorld.java"));
+            setCurrentFile(new File("./test/src/HelloWorld.java"));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -78,12 +65,8 @@ public class Inception extends JFrame {
         return mb;
     }
 
-    private void openFile(File f) throws IOException {
+    private void setCurrentFile(File f) throws IOException {
         editor.setPage(f.toURI().toURL());
-        updateCurrentFile(f);
-    }
-
-    private void updateCurrentFile(File f) {
         currentFile = f;
         setTitle(currentFile.getName());
     }
@@ -96,8 +79,8 @@ public class Inception extends JFrame {
 
         @Override
         public void actionPerformed(ActionEvent ev) {
-            String openPath = currentFile == null ? System.getProperty("user.dir") : currentFile.getPath();
-            JFileChooser fc = new JFileChooser(openPath); //open current directory initially
+            String startPath = currentFile == null ? System.getProperty("user.dir") : currentFile.getPath();
+            JFileChooser fc = new JFileChooser(startPath); //open current directory initially
             fc.setFileFilter(new JavaExtensionFilter());
             fc.setAcceptAllFileFilterUsed(false);
 
@@ -106,7 +89,7 @@ public class Inception extends JFrame {
             if (returnVal == JFileChooser.APPROVE_OPTION) {
                 File f = fc.getSelectedFile();
                 try {
-                    openFile(f);
+                    setCurrentFile(f);
                 } catch (FileNotFoundException e) {
                     Console.logErr("Requested file not found.");
                     e.printStackTrace();
@@ -125,8 +108,8 @@ public class Inception extends JFrame {
 
         @Override
         public void actionPerformed(ActionEvent ev) {
-            String openPath = currentFile == null ? System.getProperty("user.dir") : currentFile.getPath();
-            JFileChooser fc = new JFileChooser(openPath); //open current file location
+            String startPath = currentFile == null ? System.getProperty("user.dir") : currentFile.getPath();
+            JFileChooser fc = new JFileChooser(startPath); //open current file location
             fc.setFileFilter(new JavaExtensionFilter());
             fc.setAcceptAllFileFilterUsed(false);
 
@@ -141,11 +124,11 @@ public class Inception extends JFrame {
 
                 try (FileWriter fw = new FileWriter(f)) {
                     fw.write(editor.getText());
+                    setCurrentFile(f);
                 } catch (IOException e) {
                     Console.logErr("Unable to save the editor contents to the provided file.");
                     e.printStackTrace();
                 }
-                updateCurrentFile(f);
             }
         }
     }
@@ -157,17 +140,13 @@ public class Inception extends JFrame {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            if (runner == null) runner = new RunConfiguration(OP_SYSTEM);
             try {
                 runner.run(currentFile);
-                Console.log("test3");
             } catch (IOException | InterruptedException ex) {
                 ex.printStackTrace();
-                System.exit(9);
             }
         }
     }
-
 
     public static void main(String[] args) {
         //I just copy-pasted the following from an example...
