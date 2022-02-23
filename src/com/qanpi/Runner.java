@@ -13,7 +13,7 @@ class Runner {
     private final OS OS;
     private final String EXT;
     private File jdkPath;
-
+    private Process currentProcess;
 
     enum OS {
         Windows,
@@ -48,22 +48,23 @@ class Runner {
             return;
         }
 
+
         CompletableFuture<File> compile = CompletableFuture.supplyAsync(compile(f));
         CompletableFuture<Process> run = compile.thenApply(cf -> execute(cf));
-        run.thenAccept(pro -> readProcess(pro));
-//        File compiledFile = compile(f);
-//        execute(compiledFile);
-        Console.log("test2");
+        run.thenAccept(pro -> start(pro));
+
     }
 
     private Supplier<File> compile(File f) {
         return () -> {
             File javac = new File(jdkPath + "/bin/javac" + EXT);
-            ProcessBuilder pb = new ProcessBuilder(javac.getAbsolutePath(), f.getAbsolutePath());
+            String[] command = {javac.getAbsolutePath(), f.getAbsolutePath()};
+            ProcessBuilder pb = new ProcessBuilder(command);
 
             try {
-                pb.start();
-            } catch (IOException e) {
+                Process pro = pb.start();
+                pro.waitFor();
+            } catch (IOException | InterruptedException e) {
                 e.printStackTrace();
             }
 
@@ -89,7 +90,8 @@ class Runner {
         ;
         packagePath = packagePath.substring(0, packagePath.length() - 1); //remove the extra "." at the end of the package path
 
-        ProcessBuilder pb = new ProcessBuilder(java.getAbsolutePath(), "-cp", classPath.getAbsolutePath(), packagePath);
+        String[] command = {java.getAbsolutePath(), "-cp", classPath.getAbsolutePath(), packagePath};
+        ProcessBuilder pb = new ProcessBuilder(command);
         try {
             return pb.start();
         } catch (IOException e) {
@@ -98,12 +100,30 @@ class Runner {
         return null;
     }
 
-    private void readProcess(Process pro) {
+    private void start(Process pro) {
+        currentProcess = pro;
+        pro.onExit().thenAccept(p -> finish(p));
+
         InputStream is = pro.getInputStream();
         Scanner sc = new Scanner(is);
         while (sc.hasNextLine()) {
             Console.log(sc.nextLine());
         }
+    }
+
+    private void finish(Process pro) {
+        Console.log(Console.newLine + "Process finished with exit code " + pro.exitValue());
+        currentProcess = null;
+    }
+
+    void terminate() {
+        if(currentProcess == null) return; //means it already has terminated
+        currentProcess.descendants().forEach(pro -> pro.destroy());
+        currentProcess.destroy();
+    }
+
+    boolean isRunning() {
+        return (currentProcess != null);
     }
 
     private void searchForJDK() {

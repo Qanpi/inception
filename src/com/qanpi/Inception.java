@@ -3,24 +3,22 @@ package com.qanpi;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 
 
-public class Inception extends JFrame {
-    private JTextPane editor;
-    private Console console;
-    private Runner runner;
+public class Inception extends JFrame implements WindowListener {
+    private final JTextPane editor;
+    private final Runner runner;
 
     private File currentFile;
 
     Inception() {
         super("Inception");
-
-        runner = new Runner();
-
         //Create the main editor text pane
         editor = new JTextPane();
         //and the scroll pane for it
@@ -29,8 +27,7 @@ public class Inception extends JFrame {
 
         //Create the console uneditable text pane
         //and the scroll pane for it
-        console = new Console();
-        JScrollPane consoleScrollPane = new JScrollPane(console.getComponent());
+        JScrollPane consoleScrollPane = new JScrollPane(new Console().getComponent());
         consoleScrollPane.setPreferredSize(new Dimension(300, 200));
 
         //Split pane between editor and console - allows the panes to be resized
@@ -40,13 +37,16 @@ public class Inception extends JFrame {
 
         add(splitPane, BorderLayout.CENTER);
         setJMenuBar(createMenuBar());
+        addWindowListener(this);
+
+        runner = new Runner();
 
         //ONLY FOR DEBUG
-        try {
-            setCurrentFile(new File("./test/src/HelloWorld.java"));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+//        try {
+//            loadFile(new File("C:\\Users\\aleks\\OneDrive - Suomalaisen Yhteiskoulun Osakeyhtiö\\Tiedostot\\School\\Pre-IB\\Term 3\\ComSci\\Inception\\test\\src\\HelloWorld.java"));
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
     }
 
     private JMenuBar createMenuBar() {
@@ -54,7 +54,8 @@ public class Inception extends JFrame {
 
         JMenu fileMenu = new JMenu("File");
         fileMenu.add(new OpenFileAction());
-        fileMenu.add(new SaveFileAction());
+        fileMenu.add(new SaveAction());
+        fileMenu.add(new SaveAsAction());
 
         JMenu codeMenu = new JMenu("Code");
         codeMenu.add(new RunAction());
@@ -65,12 +66,11 @@ public class Inception extends JFrame {
         return mb;
     }
 
-    private void setCurrentFile(File f) throws IOException {
+    private void loadFile(File f) throws IOException {
         editor.setPage(f.toURI().toURL());
         currentFile = f;
         setTitle(currentFile.getName());
     }
-
 
     class OpenFileAction extends AbstractAction {
         public OpenFileAction() {
@@ -89,7 +89,7 @@ public class Inception extends JFrame {
             if (returnVal == JFileChooser.APPROVE_OPTION) {
                 File f = fc.getSelectedFile();
                 try {
-                    setCurrentFile(f);
+                    loadFile(f);
                 } catch (FileNotFoundException e) {
                     Console.logErr("Requested file not found.");
                     e.printStackTrace();
@@ -101,8 +101,29 @@ public class Inception extends JFrame {
         }
     }
 
-    class SaveFileAction extends AbstractAction {
-        public SaveFileAction() {
+    class SaveAction extends AbstractAction {
+        public SaveAction() {super("Save");}
+
+        @Override
+        public void actionPerformed(ActionEvent ev) {
+            if (currentFile != null && currentFile.exists()) {
+                try (FileWriter fw = new FileWriter(currentFile)) {
+                    fw.write(editor.getText());
+                    fw.close();
+                    loadFile(currentFile);
+                } catch (IOException e) {
+                    Console.logErr("Unable to save the editor contents to the provided file.");
+                    e.printStackTrace();
+                }
+            } else {
+                //redirect to save as, if no file opened (file doesn't exist)
+                new SaveAsAction().actionPerformed(new ActionEvent(this, ActionEvent.ACTION_PERFORMED, null));
+            }
+        }
+    }
+
+    class SaveAsAction extends AbstractAction {
+        public SaveAsAction() {
             super("Save As...");
         }
 
@@ -124,11 +145,13 @@ public class Inception extends JFrame {
 
                 try (FileWriter fw = new FileWriter(f)) {
                     fw.write(editor.getText());
-                    setCurrentFile(f);
+                    fw.close();
+                    loadFile(f);
                 } catch (IOException e) {
                     Console.logErr("Unable to save the editor contents to the provided file.");
                     e.printStackTrace();
                 }
+
             }
         }
     }
@@ -163,11 +186,42 @@ public class Inception extends JFrame {
     //Open the editor's GUI at startup
     private static void createAndShowGUI() {
         final JFrame IDE = new Inception();
-        IDE.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        IDE.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 
         IDE.pack();
         IDE.setVisible(true);
     }
+
+    @Override
+    public void windowOpened(WindowEvent e) {}
+
+    @Override
+    public void windowClosing(WindowEvent e) {
+        if (runner.isRunning()) {
+            int returnVal = JOptionPane.showConfirmDialog(this, "A process is currently running. Do you wish to terminate and exit?");
+            if (returnVal == JOptionPane.YES_OPTION) {
+                runner.terminate();
+                dispose();
+            }
+        } else {
+            dispose();
+        }
+    }
+
+    @Override
+    public void windowClosed(WindowEvent e) {}
+
+    @Override
+    public void windowIconified(WindowEvent e) {}
+
+    @Override
+    public void windowDeiconified(WindowEvent e) {}
+
+    @Override
+    public void windowActivated(WindowEvent e) {}
+
+    @Override
+    public void windowDeactivated(WindowEvent e) {}
 }
 
 
