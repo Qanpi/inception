@@ -1,0 +1,170 @@
+Index: src/com/qanpi/Inception.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.qanpi;\r\n\r\nimport javax.swing.*;\r\nimport java.awt.*;\r\nimport java.awt.event.ActionEvent;\r\nimport java.awt.event.WindowEvent;\r\nimport java.awt.event.WindowListener;\r\nimport java.io.File;\r\nimport java.io.FileNotFoundException;\r\nimport java.io.FileWriter;\r\nimport java.io.IOException;\r\n\r\n\r\npublic class Inception extends JFrame implements WindowListener {\r\n    private final JTextPane editor;\r\n    private final Runner runner;\r\n\r\n    private File currentFile;\r\n\r\n    Inception() {\r\n        super(\"Inception\");\r\n        //Create the main editor text pane\r\n        editor = new JTextPane();\r\n        //and the scroll pane for it\r\n        JScrollPane editorScrollPane = new JScrollPane(editor);\r\n        editorScrollPane.setPreferredSize(new Dimension(600, 300));\r\n\r\n        //Create the console uneditable text pane\r\n        //and the scroll pane for it\r\n        JScrollPane consoleScrollPane = new JScrollPane(new Console().getComponent());\r\n        consoleScrollPane.setPreferredSize(new Dimension(300, 200));\r\n\r\n        //Split pane between editor and console - allows the panes to be resized\r\n        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, editorScrollPane, consoleScrollPane);\r\n        splitPane.setOneTouchExpandable(true);\r\n        splitPane.setResizeWeight(1); //so that the console doesn't shrink with the window\r\n\r\n        add(splitPane, BorderLayout.CENTER);\r\n        setJMenuBar(createMenuBar());\r\n        addWindowListener(this);\r\n\r\n        runner = new Runner();\r\n\r\n        //ONLY FOR DEBUG\r\n//        try {\r\n//            loadFile(new File(\"C:\\\\Users\\\\aleks\\\\OneDrive - Suomalaisen Yhteiskoulun Osakeyhtiö\\\\Tiedostot\\\\School\\\\Pre-IB\\\\Term 3\\\\ComSci\\\\Inception\\\\test\\\\src\\\\HelloWorld.java\"));\r\n//        } catch (IOException e) {\r\n//            e.printStackTrace();\r\n//        }\r\n    }\r\n\r\n    private JMenuBar createMenuBar() {\r\n        JMenuBar mb = new JMenuBar();\r\n\r\n        JMenu fileMenu = new JMenu(\"File\");\r\n        fileMenu.add(new OpenFileAction());\r\n        fileMenu.add(new SaveAction());\r\n        fileMenu.add(new SaveAsAction());\r\n\r\n        JMenu codeMenu = new JMenu(\"Code\");\r\n        codeMenu.add(new RunAction());\r\n\r\n        mb.add(fileMenu);\r\n        mb.add(codeMenu);\r\n\r\n        return mb;\r\n    }\r\n\r\n    private void loadFile(File f) throws IOException {\r\n        editor.setPage(f.toURI().toURL());\r\n        currentFile = f;\r\n        setTitle(currentFile.getName());\r\n    }\r\n\r\n    class OpenFileAction extends AbstractAction {\r\n        public OpenFileAction() {\r\n            super(\"Open...\");\r\n        }\r\n\r\n        @Override\r\n        public void actionPerformed(ActionEvent ev) {\r\n            String startPath = currentFile == null ? System.getProperty(\"user.dir\") : currentFile.getPath();\r\n            JFileChooser fc = new JFileChooser(startPath); //open current directory initially\r\n            fc.setFileFilter(new JavaExtensionFilter());\r\n            fc.setAcceptAllFileFilterUsed(false);\r\n\r\n            int returnVal = fc.showOpenDialog(null);\r\n\r\n            if (returnVal == JFileChooser.APPROVE_OPTION) {\r\n                File f = fc.getSelectedFile();\r\n                try {\r\n                    loadFile(f);\r\n                } catch (FileNotFoundException e) {\r\n                    Console.logErr(\"Requested file not found.\");\r\n                    e.printStackTrace();\r\n                } catch (IOException e) {\r\n                    Console.logErr(\"The contents of the file are not supported by the editor.\");\r\n                    e.printStackTrace();\r\n                }\r\n            }\r\n        }\r\n    }\r\n\r\n    class SaveAction extends AbstractAction {\r\n        public SaveAction() {super(\"Save\");}\r\n\r\n        @Override\r\n        public void actionPerformed(ActionEvent ev) {\r\n            if (currentFile != null && currentFile.exists()) {\r\n                try (FileWriter fw = new FileWriter(currentFile)) {\r\n                    fw.write(editor.getText());\r\n                    fw.close();\r\n                    loadFile(currentFile);\r\n                } catch (IOException e) {\r\n                    Console.logErr(\"Unable to save the editor contents to the provided file.\");\r\n                    e.printStackTrace();\r\n                }\r\n            } else {\r\n                //redirect to save as, if no file opened (file doesn't exist)\r\n                new SaveAsAction().actionPerformed(new ActionEvent(this, ActionEvent.ACTION_PERFORMED, null));\r\n            }\r\n        }\r\n    }\r\n\r\n    class SaveAsAction extends AbstractAction {\r\n        public SaveAsAction() {\r\n            super(\"Save As...\");\r\n        }\r\n\r\n        @Override\r\n        public void actionPerformed(ActionEvent ev) {\r\n            String startPath = currentFile == null ? System.getProperty(\"user.dir\") : currentFile.getPath();\r\n            JFileChooser fc = new JFileChooser(startPath); //open current file location\r\n            fc.setFileFilter(new JavaExtensionFilter());\r\n            fc.setAcceptAllFileFilterUsed(false);\r\n\r\n            int returnVal = fc.showSaveDialog(null);\r\n\r\n            if (returnVal == JFileChooser.APPROVE_OPTION) {\r\n                String ext = fc.getFileFilter().getDescription();\r\n                File f = fc.getSelectedFile();\r\n\r\n                if (!f.getName().contains(ext)) //in case the file name is given as just \"file\" (with no .ext)\r\n                    f = new File(fc.getSelectedFile() + ext);\r\n\r\n                try (FileWriter fw = new FileWriter(f)) {\r\n                    fw.write(editor.getText());\r\n                    fw.close();\r\n                    loadFile(f);\r\n                } catch (IOException e) {\r\n                    Console.logErr(\"Unable to save the editor contents to the provided file.\");\r\n                    e.printStackTrace();\r\n                }\r\n\r\n            }\r\n        }\r\n    }\r\n\r\n    class RunAction extends AbstractAction {\r\n        RunAction() {\r\n            super(\"Run\");\r\n        }\r\n\r\n        @Override\r\n        public void actionPerformed(ActionEvent e) {\r\n            try {\r\n                runner.run(currentFile);\r\n            } catch (IOException | InterruptedException ex) {\r\n                ex.printStackTrace();\r\n            }\r\n        }\r\n    }\r\n\r\n    public static void main(String[] args) {\r\n        //I just copy-pasted the following from an example...\r\n\r\n        // Schedule a job for the event dispatch thread:\r\n        //creating and showing this application's GUI.\r\n        SwingUtilities.invokeLater(() -> {\r\n            //Turn off metal's use of bold fonts\r\n            UIManager.put(\"swing.boldMetal\", Boolean.FALSE);\r\n            createAndShowGUI();\r\n        });\r\n    }\r\n\r\n    //Open the editor's GUI at startup\r\n    private static void createAndShowGUI() {\r\n        final JFrame IDE = new Inception();\r\n        IDE.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);\r\n\r\n        IDE.pack();\r\n        IDE.setVisible(true);\r\n    }\r\n\r\n    @Override\r\n    public void windowOpened(WindowEvent e) {}\r\n\r\n    @Override\r\n    public void windowClosing(WindowEvent e) {\r\n        if (runner.isRunning()) {\r\n            int returnVal = JOptionPane.showConfirmDialog(this, \"A process is currently running. Do you wish to terminate and exit?\");\r\n            if (returnVal == JOptionPane.YES_OPTION) {\r\n                runner.terminate();\r\n                dispose();\r\n            }\r\n        } else {\r\n            dispose();\r\n        }\r\n    }\r\n\r\n    @Override\r\n    public void windowClosed(WindowEvent e) {}\r\n\r\n    @Override\r\n    public void windowIconified(WindowEvent e) {}\r\n\r\n    @Override\r\n    public void windowDeiconified(WindowEvent e) {}\r\n\r\n    @Override\r\n    public void windowActivated(WindowEvent e) {}\r\n\r\n    @Override\r\n    public void windowDeactivated(WindowEvent e) {}\r\n}\r\n\r\n\r\n\r\n\r\n\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/com/qanpi/Inception.java b/src/com/qanpi/Inception.java
+--- a/src/com/qanpi/Inception.java	
++++ b/src/com/qanpi/Inception.java	
+@@ -9,6 +9,7 @@
+ import java.io.FileNotFoundException;
+ import java.io.FileWriter;
+ import java.io.IOException;
++import java.util.concurrent.CompletableFuture;
+ 
+ 
+ public class Inception extends JFrame implements WindowListener {
+@@ -16,6 +17,7 @@
+     private final Runner runner;
+ 
+     private File currentFile;
++    private JMenuItem stopButton;
+ 
+     Inception() {
+         super("Inception");
+@@ -60,6 +62,11 @@
+         JMenu codeMenu = new JMenu("Code");
+         codeMenu.add(new RunAction());
+ 
++        stopButton = new JMenuItem("Stop");
++        stopButton.setAction(new StopAction());
++        stopButton.setEnabled(false); //disable by default
++        codeMenu.add(stopButton);
++
+         mb.add(fileMenu);
+         mb.add(codeMenu);
+ 
+@@ -163,11 +170,22 @@
+ 
+         @Override
+         public void actionPerformed(ActionEvent e) {
+-            try {
+-                runner.run(currentFile);
+-            } catch (IOException | InterruptedException ex) {
+-                ex.printStackTrace();
+-            }
++            stopButton.setEnabled(true);
++            System.out.println("test2");
++            CompletableFuture<Void> run = CompletableFuture.runAsync(() -> runner.run(currentFile));
++            run.thenRun(() -> new StopAction.(new ActionEvent(this, ActionEvent.ACTION_PERFORMED, null)));
++        }
++    }
++
++    class StopAction extends AbstractAction {
++        StopAction() {
++            super("Stop");
++        }
++
++        @Override
++        public void actionPerformed(ActionEvent e) {
++            runner.terminate();
++            stopButton.setEnabled(false);
+         }
+     }
+ 
+@@ -222,6 +240,8 @@
+ 
+     @Override
+     public void windowDeactivated(WindowEvent e) {}
++
++
+ }
+ 
+ 
+Index: src/com/qanpi/Runner.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.qanpi;\r\n\r\nimport javax.swing.*;\r\nimport java.io.File;\r\nimport java.io.IOException;\r\nimport java.io.InputStream;\r\nimport java.util.Scanner;\r\nimport java.util.concurrent.CompletableFuture;\r\nimport java.util.function.Supplier;\r\n\r\n\r\nclass Runner {\r\n    private final OS OS;\r\n    private final String EXT;\r\n    private File jdkPath;\r\n    private Process currentProcess;\r\n\r\n    enum OS {\r\n        Windows,\r\n        Linux\r\n    }\r\n\r\n    Runner () {\r\n        OS = getOS();\r\n        EXT = (OS == OS.Windows) ? \".exe\" : \"\";\r\n        searchForJDK();\r\n    }\r\n\r\n    private OS getOS() {\r\n        //Determine and store the OS of the user\r\n        String osName = System.getProperty(\"os.name\");\r\n        if(osName.startsWith(\"Windows\")) return OS.Windows;\r\n        else if (osName.startsWith(\"Linux\")) return OS.Linux;\r\n        else throw new RuntimeException(\"Unsupported operating system.\");\r\n    }\r\n\r\n    public void run(File f) throws IOException, InterruptedException {\r\n        //TODO: replace this with project structure\r\n        if(f == null) {\r\n            Console.logErr(\"No file is currently open.\");\r\n            return;\r\n        }\r\n\r\n        if (jdkPath == null) {\r\n            JOptionPane.showMessageDialog(null, \"Please provide the path to the JDK folder manually.\",\r\n                    \"Path not found\", JOptionPane.ERROR_MESSAGE);\r\n            manualPathToJDK();\r\n            return;\r\n        }\r\n\r\n\r\n        CompletableFuture<File> compile = CompletableFuture.supplyAsync(compile(f));\r\n        CompletableFuture<Process> run = compile.thenApply(cf -> execute(cf));\r\n        run.thenAccept(pro -> start(pro));\r\n\r\n    }\r\n\r\n    private Supplier<File> compile(File f) {\r\n        return () -> {\r\n            File javac = new File(jdkPath + \"/bin/javac\" + EXT);\r\n            String[] command = {javac.getAbsolutePath(), f.getAbsolutePath()};\r\n            ProcessBuilder pb = new ProcessBuilder(command);\r\n\r\n            try {\r\n                Process pro = pb.start();\r\n                pro.waitFor();\r\n            } catch (IOException | InterruptedException e) {\r\n                e.printStackTrace();\r\n            }\r\n\r\n            return new File(f.getParentFile() + \"/\" + f.getName().replace(\".java\", \".class\")); //TODO: clarify this\r\n        };\r\n    }\r\n\r\n    private Process execute(File f) {\r\n        File java = new File(jdkPath + \"/bin/java\");\r\n        //TODO: maybe split into separate methods\r\n        File classPath = new File(f.getPath().replace(\".class\", \"\")); //path to the .class file folder\r\n        String packagePath = \"\"; //e.g. com.company.Class\r\n\r\n        //go up until in the file structure until \"src\" folder\r\n        while (!classPath.getName().equals(\"src\")) {\r\n            if (classPath.getParentFile() != null) {\r\n                packagePath = classPath.getName() + \".\" + packagePath;\r\n                classPath = classPath.getParentFile();\r\n            } else {\r\n                Console.logErr(\"Please place your .java file in a 'src/' directory\");\r\n            }\r\n        }\r\n        ;\r\n        packagePath = packagePath.substring(0, packagePath.length() - 1); //remove the extra \".\" at the end of the package path\r\n\r\n        String[] command = {java.getAbsolutePath(), \"-cp\", classPath.getAbsolutePath(), packagePath};\r\n        ProcessBuilder pb = new ProcessBuilder(command);\r\n        try {\r\n            return pb.start();\r\n        } catch (IOException e) {\r\n            e.printStackTrace();\r\n        }\r\n        return null;\r\n    }\r\n\r\n    private void start(Process pro) {\r\n        currentProcess = pro;\r\n        pro.onExit().thenAccept(p -> finish(p));\r\n\r\n        InputStream is = pro.getInputStream();\r\n        Scanner sc = new Scanner(is);\r\n        while (sc.hasNextLine()) {\r\n            Console.log(sc.nextLine());\r\n        }\r\n    }\r\n\r\n    private void finish(Process pro) {\r\n        Console.log(Console.newLine + \"Process finished with exit code \" + pro.exitValue());\r\n        currentProcess = null;\r\n    }\r\n\r\n    void terminate() {\r\n        if(currentProcess == null) return; //means it already has terminated\r\n        currentProcess.descendants().forEach(pro -> pro.destroy());\r\n        currentProcess.destroy();\r\n    }\r\n\r\n    boolean isRunning() {\r\n        return (currentProcess != null);\r\n    }\r\n\r\n    private void searchForJDK() {\r\n        final String[] commonPaths = {System.getProperty(\"user.home\") + \"/.jdks/\",\r\n                \"C:/Program Files/Java/\",\r\n                \"C:/Program Files (x86)/Java/\"};\r\n\r\n\r\n        for (String path : commonPaths) {\r\n            File baseDir = new File(path);\r\n            //exit if not a directory\r\n            if(!baseDir.isDirectory() || baseDir.listFiles() == null) continue;\r\n\r\n            File[] jdks = baseDir.listFiles(File::isDirectory);\r\n            for (int i=0; i < jdks.length; i++) {\r\n                File jdk = jdks[i];\r\n                File java = new File(jdk + \"/bin/java\" + EXT), javac = new File(jdk + \"/bin/javac\" + EXT);\r\n\r\n                if (java.exists() && javac.exists()) jdkPath = jdk;\r\n            }\r\n        }\r\n    }\r\n\r\n    private void manualPathToJDK() {\r\n        JFileChooser fc = new JFileChooser();\r\n        fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);\r\n        fc.setDialogTitle(\"Please provide a path to the JDK folder\");\r\n\r\n        int returnVal = fc.showOpenDialog(null);\r\n        while (returnVal == JFileChooser.APPROVE_OPTION) {\r\n            File dir = fc.getSelectedFile();\r\n            File java = new File(dir + \"/bin/java\" + EXT), javac = new File(dir + \"/bin/javac\" + EXT);\r\n            if (java.exists() && javac.exists()) jdkPath = dir;\r\n            else {\r\n                JOptionPane.showMessageDialog(fc, \"Please provide a path to the JDK folder which contains a 'bin' directory with java and javac executables.\",\r\n                        \"Invalid path\",\r\n                        JOptionPane.ERROR_MESSAGE);\r\n                returnVal = fc.showOpenDialog(null);\r\n            }\r\n        }\r\n    }\r\n}\r\n\r\n\r\n
+===================================================================
+diff --git a/src/com/qanpi/Runner.java b/src/com/qanpi/Runner.java
+--- a/src/com/qanpi/Runner.java	
++++ b/src/com/qanpi/Runner.java	
+@@ -34,7 +34,7 @@
+         else throw new RuntimeException("Unsupported operating system.");
+     }
+ 
+-    public void run(File f) throws IOException, InterruptedException {
++    public void run(File f) {
+         //TODO: replace this with project structure
+         if(f == null) {
+             Console.logErr("No file is currently open.");
+@@ -48,31 +48,26 @@
+             return;
+         }
+ 
+-
+-        CompletableFuture<File> compile = CompletableFuture.supplyAsync(compile(f));
+-        CompletableFuture<Process> run = compile.thenApply(cf -> execute(cf));
+-        run.thenAccept(pro -> start(pro));
+-
++        File cf = compile(f);
++        execute(cf);
+     }
+ 
+-    private Supplier<File> compile(File f) {
+-        return () -> {
+-            File javac = new File(jdkPath + "/bin/javac" + EXT);
+-            String[] command = {javac.getAbsolutePath(), f.getAbsolutePath()};
+-            ProcessBuilder pb = new ProcessBuilder(command);
++    private File compile(File f) {
++        File javac = new File(jdkPath + "/bin/javac" + EXT);
++        String[] command = {javac.getAbsolutePath(), f.getAbsolutePath()};
++        ProcessBuilder pb = new ProcessBuilder(command);
+ 
+-            try {
+-                Process pro = pb.start();
+-                pro.waitFor();
+-            } catch (IOException | InterruptedException e) {
+-                e.printStackTrace();
+-            }
++        try {
++            Process pro = pb.start();
++            pro.waitFor();
++        } catch (IOException | InterruptedException e) {
++            e.printStackTrace();
++        }
+ 
+-            return new File(f.getParentFile() + "/" + f.getName().replace(".java", ".class")); //TODO: clarify this
+-        };
++        return new File(f.getParentFile() + "/" + f.getName().replace(".java", ".class")); //TODO: clarify this
+     }
+ 
+-    private Process execute(File f) {
++    private void execute(File f) {
+         File java = new File(jdkPath + "/bin/java");
+         //TODO: maybe split into separate methods
+         File classPath = new File(f.getPath().replace(".class", "")); //path to the .class file folder
+@@ -93,28 +88,25 @@
+         String[] command = {java.getAbsolutePath(), "-cp", classPath.getAbsolutePath(), packagePath};
+         ProcessBuilder pb = new ProcessBuilder(command);
+         try {
+-            return pb.start();
++            start(pb.start());
+         } catch (IOException e) {
+             e.printStackTrace();
+         }
+-        return null;
+     }
+ 
+     private void start(Process pro) {
+         currentProcess = pro;
+-        pro.onExit().thenAccept(p -> finish(p));
++//        pro.onExit().thenAccept(p -> finish(p));
+ 
+         InputStream is = pro.getInputStream();
+         Scanner sc = new Scanner(is);
+         while (sc.hasNextLine()) {
+             Console.log(sc.nextLine());
+         }
+-    }
+ 
+-    private void finish(Process pro) {
+         Console.log(Console.newLine + "Process finished with exit code " + pro.exitValue());
+-        currentProcess = null;
+     }
++
+ 
+     void terminate() {
+         if(currentProcess == null) return; //means it already has terminated

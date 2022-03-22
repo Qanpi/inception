@@ -4,6 +4,6 @@ public class New {
             System.out.println(i);
         }
 //System.out.println("test");
-        //while (true) System.out.println("Hello WOrld!");
+        while (true) System.out.println("Hello WOrld!");
     }
 }

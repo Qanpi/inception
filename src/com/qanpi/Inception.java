@@ -9,6 +9,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
+
+import com.formdev.flatlaf.FlatDarculaLaf;
 
 
 public class Inception extends JFrame implements WindowListener {
@@ -16,6 +19,7 @@ public class Inception extends JFrame implements WindowListener {
     private final Runner runner;
 
     private File currentFile;
+    private JMenuItem stopButton;
 
     Inception() {
         super("Inception");
@@ -42,11 +46,11 @@ public class Inception extends JFrame implements WindowListener {
         runner = new Runner();
 
         //ONLY FOR DEBUG
-//        try {
-//            loadFile(new File("C:\\Users\\aleks\\OneDrive - Suomalaisen Yhteiskoulun Osakeyhtiö\\Tiedostot\\School\\Pre-IB\\Term 3\\ComSci\\Inception\\test\\src\\HelloWorld.java"));
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
+        try {
+            loadFile(new File("./src/com/qanpi/HelloWorld.java"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private JMenuBar createMenuBar() {
@@ -60,8 +64,22 @@ public class Inception extends JFrame implements WindowListener {
         JMenu codeMenu = new JMenu("Code");
         codeMenu.add(new RunAction());
 
+        stopButton = new JMenuItem("Stop");
+        stopButton.setAction(new StopAction());
+        stopButton.setEnabled(false); //disable by default
+        codeMenu.add(stopButton);
+
+        JMenu settingsMenu = new JMenu("Settings");
+        JMenu themeMenu = new JMenu("Themes");
+
+        for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+            themeMenu.add(new SetThemeAction(info.getName()));
+        }
+        settingsMenu.add(themeMenu);
+
         mb.add(fileMenu);
         mb.add(codeMenu);
+        mb.add(settingsMenu);
 
         return mb;
     }
@@ -156,6 +174,10 @@ public class Inception extends JFrame implements WindowListener {
         }
     }
 
+    void toggleStopButton() {
+        stopButton.setEnabled(!stopButton.isEnabled());
+    }
+
     class RunAction extends AbstractAction {
         RunAction() {
             super("Run");
@@ -163,12 +185,49 @@ public class Inception extends JFrame implements WindowListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            try {
-                runner.run(currentFile);
-            } catch (IOException | InterruptedException ex) {
-                ex.printStackTrace();
-            }
+            toggleStopButton();
+            CompletableFuture<Void> run = CompletableFuture.runAsync(() -> runner.run(currentFile));
+            run.thenRun(() -> toggleStopButton());
         }
+    }
+
+    class StopAction extends AbstractAction {
+        StopAction() {
+            super("Stop");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            runner.finish();
+            toggleStopButton(); //if this action was initiated, the button had to be already enabled
+        }
+    }
+
+    class SetThemeAction extends AbstractAction {
+        SetThemeAction (String themeName) {
+            super(themeName);
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+                if (e.getActionCommand().equals(info.getName())) {
+                    try {
+                        UIManager.setLookAndFeel(info.getClassName());
+                    } catch (ClassNotFoundException | UnsupportedLookAndFeelException | IllegalAccessException | InstantiationException ex) {
+                        Console.logErr("The selected theme is not supported.");
+                        ex.printStackTrace();
+                    }
+                    break;
+                }
+            }
+            updateUI();
+         }
+    }
+
+    private void updateUI() {
+        SwingUtilities.updateComponentTreeUI(this);
+        pack();
     }
 
     public static void main(String[] args) {
@@ -177,8 +236,18 @@ public class Inception extends JFrame implements WindowListener {
         // Schedule a job for the event dispatch thread:
         //creating and showing this application's GUI.
         SwingUtilities.invokeLater(() -> {
-            //Turn off metal's use of bold fonts
-            UIManager.put("swing.boldMetal", Boolean.FALSE);
+            UIManager.installLookAndFeel("Darcula", FlatDarculaLaf.class.getName());
+            //Set Nimbus as the default Look and Feel
+            try {
+                for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+                    if ("Darcula".equals(info.getName())) {
+                        UIManager.setLookAndFeel(info.getClassName());
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             createAndShowGUI();
         });
     }
@@ -200,7 +269,7 @@ public class Inception extends JFrame implements WindowListener {
         if (runner.isRunning()) {
             int returnVal = JOptionPane.showConfirmDialog(this, "A process is currently running. Do you wish to terminate and exit?");
             if (returnVal == JOptionPane.YES_OPTION) {
-                runner.terminate();
+                runner.finish();
                 dispose();
             }
         } else {
@@ -222,6 +291,8 @@ public class Inception extends JFrame implements WindowListener {
 
     @Override
     public void windowDeactivated(WindowEvent e) {}
+
+
 }
 
 
