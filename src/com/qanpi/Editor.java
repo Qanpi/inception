@@ -19,18 +19,22 @@ public class Editor {
 
     Editor () {
         component = new JTextPane();
-        //Apply the tab filter
-        Document doc = component.getDocument();
-        ((AbstractDocument) doc).setDocumentFilter(new EditorFilter());
+        updateFilter();
     }
 
     void openFile(File f) throws IOException {
         component.setPage(f.toURI().toURL());
+        updateFilter();
         currentFile = f;
     }
 
     String getText() {
         return component.getText();
+    }
+
+    private void updateFilter() {
+        Document doc = component.getDocument();
+        ((AbstractDocument) doc).setDocumentFilter(new EditorFilter());
     }
 
 }

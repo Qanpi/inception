@@ -34,12 +34,11 @@ class Console {
         log(msg, errorStyle);
     }
 
+    static String read() {
+        return component.getText();
+    }
+
     static void clear() {
-        try {
-            Document doc = component.getDocument();
-            doc.remove(0, doc.getLength());
-        } catch (BadLocationException e) {
-            Console.logErr("Failed to clear the console.");
-        }
+        component.setText("");
     }
 }

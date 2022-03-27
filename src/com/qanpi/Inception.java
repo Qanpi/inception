@@ -16,19 +16,17 @@ import com.formdev.flatlaf.FlatDarculaLaf;
 public class Inception extends JFrame implements WindowListener {
     private final Editor editor;
     private final Runner runner;
-
     private JMenuItem stopButton;
+
     Inception() {
         super("Inception");
-        //Create the main editor text pane
-        editor = new Editor();
 
-        //and the scroll pane for it
+        //Initialize the editor
+        editor = new Editor();
         JScrollPane editorScrollPane = new JScrollPane(editor.getComponent());
         editorScrollPane.setPreferredSize(new Dimension(600, 300));
 
-        //Create the console uneditable text pane
-        //and the scroll pane for it
+        //Initialize the console
         JScrollPane consoleScrollPane = new JScrollPane(Console.getComponent());
         consoleScrollPane.setPreferredSize(new Dimension(300, 200));
 

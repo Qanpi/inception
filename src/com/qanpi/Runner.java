@@ -3,12 +3,12 @@ package com.qanpi;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.Scanner;
+import java.util.concurrent.CompletableFuture;
+//Exception "java.lang.ClassNotFoundException: com/intellij/codeInsight/editorActions/FoldingData"while constructing DataFlavor for: application/x-java-jvm-local-objectref; class=com.intellij.codeInsight.editorActions.FoldingData
 
-
+//TODO: refactor, A LOT
 class Runner {
     private final OS OS;
     private final String EXT;
@@ -51,8 +51,7 @@ class Runner {
         try {
             File compiled = compile(f);
             execute(compiled);
-            currentProcess.waitFor();
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e) {
             Console.logErr("Failed to execute code.");
         }
     }
@@ -97,6 +96,7 @@ class Runner {
         currentProcess = pro;
         pro.onExit().thenRun(this::finish);
         //technically this means that the error and input stream will be printed out fully one after the other, but that's also how IntelliJ works
+        CompletableFuture.runAsync(() -> openOutputStream(pro.getOutputStream()));
         readInputStream(pro.getInputStream());
         readErrorStream(pro.getErrorStream());
 
@@ -116,6 +116,11 @@ class Runner {
                 Console.log(sc.nextLine());
             }
         }
+    }
+
+    private void openOutputStream(OutputStream os) {
+        PrintWriter pw = new PrintWriter(os);
+        pw.println("test");
     }
 
     void finish() {
