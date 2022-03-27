@@ -1,52 +1,30 @@
 package com.qanpi;
 
 import javax.swing.*;
-import javax.swing.text.*;
+import javax.swing.filechooser.FileFilter;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 import com.formdev.flatlaf.FlatDarculaLaf;
 
-class EditorFilter extends DocumentFilter {
-    @Override
-    public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
-        super.insertString(fb, offset, string.replace("\t", "    "), attr);
-    }
 
-    @Override
-    public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
-        if (text == null) text = ""; //to prevent errors with .setText(null) as pointed out by SOF
-        super.replace(fb, offset, length, text.replace("\t", "    "), attrs);
-    }
-}
 
 public class Inception extends JFrame implements WindowListener {
-    private final JTextPane editor;
+    private final Editor editor;
     private final Runner runner;
 
-    private File currentFile;
     private JMenuItem stopButton;
     Inception() {
         super("Inception");
         //Create the main editor text pane
-        editor = new JTextPane();
-        Document doc = editor.getDocument();
-        ((AbstractDocument) doc).setDocumentFilter(new EditorFilter());
-
-        //Set the tab size to match imported code
-        SimpleAttributeSet sas = new SimpleAttributeSet();
-        StyleConstants.setTabSet(sas, new TabSet(new TabStop[] { new TabStop(20), new TabStop(40) }));
-        System.out.println(editor.getParagraphAttributes());
-        editor.setParagraphAttributes(sas, false);
-
+        editor = new Editor();
 
         //and the scroll pane for it
-        JScrollPane editorScrollPane = new JScrollPane(editor);
+        JScrollPane editorScrollPane = new JScrollPane(editor.getComponent());
         editorScrollPane.setPreferredSize(new Dimension(600, 300));
 
         //Create the console uneditable text pane
@@ -105,14 +83,8 @@ public class Inception extends JFrame implements WindowListener {
     }
 
     private void loadFile(File f) throws IOException {
-        FileReader fw = new FileReader(f);
-        String text = new BufferedReader(fw).lines().collect(Collectors.joining(Console.newLine));
-        editor.setText(text);
-
-//        editor.setPage(f.toURI().toURL());
-//        System.out.println(editor.getEditorKit());
-        currentFile = f;
-        setTitle(currentFile.getName());
+        editor.openFile(f);
+        setTitle(f.getName());
     }
 
     class OpenFileAction extends AbstractAction {
@@ -122,22 +94,22 @@ public class Inception extends JFrame implements WindowListener {
 
         @Override
         public void actionPerformed(ActionEvent ev) {
-            String startPath = currentFile == null ? System.getProperty("user.dir") : currentFile.getPath();
-            JFileChooser fc = new JFileChooser(startPath); //open current directory initially
+            File cf = editor.getCurrentFile();
+
+            String firstPath = System.getProperty("user.dir");
+            if (cf != null) firstPath = cf.getPath();
+
+            JFileChooser fc = new JFileChooser(firstPath);
             fc.setFileFilter(new JavaExtensionFilter());
             fc.setAcceptAllFileFilterUsed(false);
 
             int returnVal = fc.showOpenDialog(null);
-
             if (returnVal == JFileChooser.APPROVE_OPTION) {
                 File f = fc.getSelectedFile();
                 try {
                     loadFile(f);
-                } catch (FileNotFoundException e) {
-                    Console.logErr("Requested file not found.");
-                    e.printStackTrace();
                 } catch (IOException e) {
-                    Console.logErr("The contents of the file are not supported by the editor.");
+                    Console.logErr("Error while trying to open file.");
                     e.printStackTrace();
                 }
             }
@@ -149,11 +121,10 @@ public class Inception extends JFrame implements WindowListener {
 
         @Override
         public void actionPerformed(ActionEvent ev) {
-            if (currentFile != null && currentFile.exists()) {
-                try (FileWriter fw = new FileWriter(currentFile)) {
+            File cf = editor.getCurrentFile();
+            if (cf != null && cf.exists()) {
+                try (FileWriter fw = new FileWriter(cf)) {
                     fw.write(editor.getText());
-                    fw.close();
-                    loadFile(currentFile);
                 } catch (IOException e) {
                     Console.logErr("Unable to save the editor contents to the provided file.");
                     e.printStackTrace();
@@ -172,13 +143,16 @@ public class Inception extends JFrame implements WindowListener {
 
         @Override
         public void actionPerformed(ActionEvent ev) {
-            String startPath = currentFile == null ? System.getProperty("user.dir") : currentFile.getPath();
-            JFileChooser fc = new JFileChooser(startPath); //open current file location
+            File cf = editor.getCurrentFile();
+
+            String firstPath = System.getProperty("user.dir");
+            if (cf != null) firstPath = cf.getPath();
+
+            JFileChooser fc = new JFileChooser(firstPath);
             fc.setFileFilter(new JavaExtensionFilter());
             fc.setAcceptAllFileFilterUsed(false);
 
             int returnVal = fc.showSaveDialog(null);
-
             if (returnVal == JFileChooser.APPROVE_OPTION) {
                 String ext = fc.getFileFilter().getDescription();
                 File f = fc.getSelectedFile();
@@ -188,13 +162,12 @@ public class Inception extends JFrame implements WindowListener {
 
                 try (FileWriter fw = new FileWriter(f)) {
                     fw.write(editor.getText());
-                    fw.close();
-                    loadFile(f);
                 } catch (IOException e) {
                     Console.logErr("Unable to save the editor contents to the provided file.");
                     e.printStackTrace();
                 }
 
+                setTitle(f.getName());
             }
         }
     }
@@ -210,9 +183,9 @@ public class Inception extends JFrame implements WindowListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            toggleStopButton();
             Console.clear();
-            CompletableFuture<Void> run = CompletableFuture.runAsync(() -> runner.run(currentFile));
+            toggleStopButton();
+            CompletableFuture<Void> run = CompletableFuture.runAsync(() -> runner.run(editor.getCurrentFile()));
             run.thenRun(() -> toggleStopButton());
         }
     }
@@ -317,8 +290,25 @@ public class Inception extends JFrame implements WindowListener {
 
     @Override
     public void windowDeactivated(WindowEvent e) {}
+}
 
+class JavaExtensionFilter extends FileFilter {
+    @Override
+    public boolean accept(File f) {
+        if (f.isDirectory()) return true;
 
+        int i = f.getName().indexOf(".");
+        if (i != -1) {
+            String ext = f.getName().substring(i);
+            return ext.equals(".java");
+        }
+        return false;
+    }
+
+    @Override
+    public String getDescription() {
+        return ".java";
+    }
 }
 
 

@@ -7,7 +7,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Scanner;
-import java.util.concurrent.CompletableFuture;
 
 
 class Runner {
@@ -50,8 +49,8 @@ class Runner {
         }
 
         try {
-            File cf = compile(f);
-            execute(cf);
+            File compiled = compile(f);
+            execute(compiled);
             currentProcess.waitFor();
         } catch (IOException | InterruptedException e) {
             Console.logErr("Failed to execute code.");
@@ -78,20 +77,20 @@ class Runner {
         File java = new File(jdkPath + "/bin/java");
         //TODO: maybe split into separate methods
         File classPath = new File(f.getPath().replace(".class", "")); //path to the .class file folder
-        String packagePath = ""; //e.g. com.company.Class
+        StringBuilder packagePath = new StringBuilder(); //e.g. com.company.Class
 
         //go up until in the file structure until "src" folder
         while (!classPath.getName().equals("src")) {
             if (classPath.getParentFile() != null) {
-                packagePath = classPath.getName() + "." + packagePath;
+                packagePath.insert(0, classPath.getName() + ".");
                 classPath = classPath.getParentFile();
             } else {
                 Console.logErr("Please place your .java file in a 'src/' directory");
             }
         }
-        packagePath = packagePath.substring(0, packagePath.length() - 1); //remove the extra "." at the end of the package path
+        packagePath = new StringBuilder(packagePath.substring(0, packagePath.length() - 1)); //remove the extra "." at the end of the package path
 
-        String[] command = {java.getAbsolutePath(), "-cp", classPath.getAbsolutePath(), packagePath};
+        String[] command = {java.getAbsolutePath(), "-cp", classPath.getAbsolutePath(), packagePath.toString()};
         ProcessBuilder pb = new ProcessBuilder(command);
 
         Process pro = pb.start();
@@ -121,7 +120,7 @@ class Runner {
 
     void finish() {
         if (currentProcess == null) return;
-        currentProcess.descendants().forEach(pro -> pro.destroy());
+        currentProcess.descendants().forEach(ProcessHandle::destroy);
         currentProcess.destroy();
         Console.log(Console.newLine + "Process finished with exit code " + currentProcess.exitValue());
         currentProcess = null;
