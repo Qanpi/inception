@@ -39,17 +39,11 @@ public class Inception extends JFrame implements WindowListener {
         ((AbstractDocument) doc).setDocumentFilter(new EditorFilter());
 
         //Set the tab size to match imported code
-//        System.out.println(editor.getEditorKit());
         SimpleAttributeSet sas = new SimpleAttributeSet();
         StyleConstants.setTabSet(sas, new TabSet(new TabStop[] { new TabStop(20), new TabStop(40) }));
         System.out.println(editor.getParagraphAttributes());
-//        System.out.println(StyleConstants.getTabSet(editor.getParagraphAttributes()));
         editor.setParagraphAttributes(sas, false);
 
-//        StyleContext sc = StyleContext.getDefaultStyleContext();
-//        TabSet tabs = new TabSet(new TabStop[] { new TabStop(20) });
-//        AttributeSet paraSet = sc.addAttribute(SimpleAttributeSet.EMPTY, StyleConstants.TabSet, tabs);
-//        editor.setParagraphAttributes(paraSet, false);
 
         //and the scroll pane for it
         JScrollPane editorScrollPane = new JScrollPane(editor);
@@ -57,7 +51,7 @@ public class Inception extends JFrame implements WindowListener {
 
         //Create the console uneditable text pane
         //and the scroll pane for it
-        JScrollPane consoleScrollPane = new JScrollPane(new Console().getComponent());
+        JScrollPane consoleScrollPane = new JScrollPane(Console.getComponent());
         consoleScrollPane.setPreferredSize(new Dimension(300, 200));
 
         //Split pane between editor and console - allows the panes to be resized

@@ -6,20 +6,13 @@ import java.awt.*;
 
 class Console {
     static String newLine = "\n";
-    static private JTextPane component;
+    final static private JTextPane component = new JTextPane();
 
-    Console () {
-        component = new JTextPane();
-        component.setEditable(false);
-    }
-
-    JTextPane getComponent() {
+    static JTextPane getComponent() {
         return component;
     }
 
     static private void log(String msg, SimpleAttributeSet sas) {
-        if (component == null) throw new NullPointerException("The console component has not been initialized.");
-
         try {
             Document doc = component.getDocument();
             doc.insertString(doc.getLength(), msg + newLine, sas);
