@@ -1,10 +1,7 @@
 package com.qanpi;
 
 import javax.swing.*;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.Document;
-import javax.swing.text.SimpleAttributeSet;
-import javax.swing.text.StyleConstants;
+import javax.swing.text.*;
 import java.awt.*;
 
 class Console {
@@ -42,5 +39,14 @@ class Console {
         SimpleAttributeSet errorStyle = new SimpleAttributeSet();
         StyleConstants.setForeground(errorStyle, Color.red);
         log(msg, errorStyle);
+    }
+
+    static void clear() {
+        try {
+            Document doc = component.getDocument();
+            doc.remove(0, doc.getLength());
+        } catch (BadLocationException e) {
+            Console.logErr("Failed to clear the console.");
+        }
     }
 }

@@ -1,18 +1,29 @@
 package com.qanpi;
 
 import javax.swing.*;
+import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import com.formdev.flatlaf.FlatDarculaLaf;
 
+class EditorFilter extends DocumentFilter {
+    @Override
+    public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
+        super.insertString(fb, offset, string.replace("\t", "    "), attr);
+    }
+
+    @Override
+    public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
+        if (text == null) text = ""; //to prevent errors with .setText(null) as pointed out by SOF
+        super.replace(fb, offset, length, text.replace("\t", "    "), attrs);
+    }
+}
 
 public class Inception extends JFrame implements WindowListener {
     private final JTextPane editor;
@@ -20,11 +31,26 @@ public class Inception extends JFrame implements WindowListener {
 
     private File currentFile;
     private JMenuItem stopButton;
-
     Inception() {
         super("Inception");
         //Create the main editor text pane
         editor = new JTextPane();
+        Document doc = editor.getDocument();
+        ((AbstractDocument) doc).setDocumentFilter(new EditorFilter());
+
+        //Set the tab size to match imported code
+//        System.out.println(editor.getEditorKit());
+        SimpleAttributeSet sas = new SimpleAttributeSet();
+        StyleConstants.setTabSet(sas, new TabSet(new TabStop[] { new TabStop(20), new TabStop(40) }));
+        System.out.println(editor.getParagraphAttributes());
+//        System.out.println(StyleConstants.getTabSet(editor.getParagraphAttributes()));
+        editor.setParagraphAttributes(sas, false);
+
+//        StyleContext sc = StyleContext.getDefaultStyleContext();
+//        TabSet tabs = new TabSet(new TabStop[] { new TabStop(20) });
+//        AttributeSet paraSet = sc.addAttribute(SimpleAttributeSet.EMPTY, StyleConstants.TabSet, tabs);
+//        editor.setParagraphAttributes(paraSet, false);
+
         //and the scroll pane for it
         JScrollPane editorScrollPane = new JScrollPane(editor);
         editorScrollPane.setPreferredSize(new Dimension(600, 300));
@@ -46,11 +72,11 @@ public class Inception extends JFrame implements WindowListener {
         runner = new Runner();
 
         //ONLY FOR DEBUG
-        try {
-            loadFile(new File("./src/com/qanpi/HelloWorld.java"));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+//        try {
+//            loadFile(new File("./src/com/qanpi/HelloWorld.java"));
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
     }
 
     private JMenuBar createMenuBar() {
@@ -85,7 +111,12 @@ public class Inception extends JFrame implements WindowListener {
     }
 
     private void loadFile(File f) throws IOException {
-        editor.setPage(f.toURI().toURL());
+        FileReader fw = new FileReader(f);
+        String text = new BufferedReader(fw).lines().collect(Collectors.joining(Console.newLine));
+        editor.setText(text);
+
+//        editor.setPage(f.toURI().toURL());
+//        System.out.println(editor.getEditorKit());
         currentFile = f;
         setTitle(currentFile.getName());
     }
@@ -186,6 +217,7 @@ public class Inception extends JFrame implements WindowListener {
         @Override
         public void actionPerformed(ActionEvent e) {
             toggleStopButton();
+            Console.clear();
             CompletableFuture<Void> run = CompletableFuture.runAsync(() -> runner.run(currentFile));
             run.thenRun(() -> toggleStopButton());
         }
