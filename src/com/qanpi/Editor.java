@@ -17,6 +17,7 @@ public class Editor {
         return component;
     }
 
+
     Editor () {
         component = new JTextPane();
         updateFilter();

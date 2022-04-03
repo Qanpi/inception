@@ -3,7 +3,9 @@ package com.qanpi;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
+import java.awt.event.ActionEvent;
 import java.io.*;
+import java.util.Arrays;
 import java.util.Scanner;
 import java.util.concurrent.CompletableFuture;
 //Exception "java.lang.ClassNotFoundException: com/intellij/codeInsight/editorActions/FoldingData"while constructing DataFlavor for: application/x-java-jvm-local-objectref; class=com.intellij.codeInsight.editorActions.FoldingData
@@ -51,7 +53,7 @@ class Runner {
         try {
             File compiled = compile(f);
             execute(compiled);
-        } catch (IOException e) {
+        } catch (IOException | InterruptedException e) {
             Console.logErr("Failed to execute code.");
         }
     }
@@ -72,7 +74,7 @@ class Runner {
             return new File(f.getParentFile() + "/" + f.getName().replace(".java", ".class")); //TODO: clarify this
     }
 
-    private void execute(@NotNull File f) throws IOException {
+    private void execute(@NotNull File f) throws IOException, InterruptedException {
         File java = new File(jdkPath + "/bin/java");
         //TODO: maybe split into separate methods
         File classPath = new File(f.getPath().replace(".class", "")); //path to the .class file folder
@@ -89,20 +91,26 @@ class Runner {
         }
         packagePath = new StringBuilder(packagePath.substring(0, packagePath.length() - 1)); //remove the extra "." at the end of the package path
 
-        String[] command = {java.getAbsolutePath(), "-cp", classPath.getAbsolutePath(), packagePath.toString()};
+        String[] command = {"\"" + java.getCanonicalPath() + "\"", "-cp", "\"" + classPath.getCanonicalPath() + "\"", packagePath.toString()};
         ProcessBuilder pb = new ProcessBuilder(command);
 
+        Console.log(String.join(" ", command));
         Process pro = pb.start();
         currentProcess = pro;
-        pro.onExit().thenRun(this::finish);
         //technically this means that the error and input stream will be printed out fully one after the other, but that's also how IntelliJ works
-        CompletableFuture.runAsync(() -> openOutputStream(pro.getOutputStream()));
-        readInputStream(pro.getInputStream());
-        readErrorStream(pro.getErrorStream());
+//        CompletableFuture<Void> readInput = CompletableFuture.runAsync(()-> readInputStream(pro.getInputStream()));
+//        CompletableFuture<Void> readError = CompletableFuture.runAsync(()-> readErrorStream(pro.getErrorStream()));
+//        CompletableFuture<Void> writeInput = CompletableFuture.runAsync(() -> openOutputStream(pro.getOutputStream()));
 
+        CompletableFuture.runAsync(()-> readInputStream(pro.getInputStream()))
+                .thenRun(() -> readErrorStream(pro.getErrorStream()));
+        CompletableFuture.runAsync(() -> openOutputStream(pro.getOutputStream()));
+
+        pro.waitFor();
     }
 
     private void readErrorStream(InputStream is) {
+        System.out.println("error stream");
         try (Scanner sc = new Scanner(is)) {
             while (sc.hasNextLine()) {
                 Console.logErr(sc.nextLine());
@@ -111,6 +119,7 @@ class Runner {
     }
 
     private void readInputStream(InputStream is) {
+        System.out.println("input stream");
         try (Scanner sc = new Scanner(is)) {
             while (sc.hasNextLine()) {
                 Console.log(sc.nextLine());
@@ -119,8 +128,15 @@ class Runner {
     }
 
     private void openOutputStream(OutputStream os) {
+        System.out.println("output stream");
+
         PrintWriter pw = new PrintWriter(os);
-        pw.println("test");
+//        while (true) System.out.println("test");
+        Console.listen(pw);
+
+//        try (Scanner sc = new Scanner(System.in)) {
+//            while(sc.hasNextLine()) System.out.println(sc.nextLine());
+//        }
     }
 
     void finish() {

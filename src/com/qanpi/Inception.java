@@ -17,10 +17,13 @@ public class Inception extends JFrame implements WindowListener {
     private final Editor editor;
     private final Runner runner;
     private JMenuItem stopButton;
+    private CompletableFuture<Void> process;
 
     Inception() {
         super("Inception");
-
+        //Todo: revise this
+        Console.refocus();
+        Console.setEditable(false);
         //Initialize the editor
         editor = new Editor();
         JScrollPane editorScrollPane = new JScrollPane(editor.getComponent());
@@ -42,11 +45,11 @@ public class Inception extends JFrame implements WindowListener {
         runner = new Runner();
 
         //ONLY FOR DEBUG
-//        try {
-//            loadFile(new File("./src/com/qanpi/HelloWorld.java"));
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
+        try {
+            loadFile(new File("./test/src/New.java"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private JMenuBar createMenuBar() {
@@ -183,8 +186,13 @@ public class Inception extends JFrame implements WindowListener {
         public void actionPerformed(ActionEvent e) {
             Console.clear();
             toggleStopButton();
-            CompletableFuture<Void> run = CompletableFuture.runAsync(() -> runner.run(editor.getCurrentFile()));
-            run.thenRun(() -> toggleStopButton());
+            Console.setEditable(true);
+            process = CompletableFuture.runAsync(() -> runner.run(editor.getCurrentFile()));
+            process.thenRun(() -> {
+                runner.finish();
+                toggleStopButton();
+                Console.setEditable(false);
+            });
         }
     }
 
@@ -195,8 +203,7 @@ public class Inception extends JFrame implements WindowListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            runner.finish();
-            toggleStopButton(); //if this action was initiated, the button had to be already enabled
+            process.complete(null);
         }
     }
 
@@ -263,7 +270,7 @@ public class Inception extends JFrame implements WindowListener {
 
     @Override
     public void windowClosing(WindowEvent e) {
-        if (runner.isRunning()) {
+        if (process != null && !process.isDone()) {
             int returnVal = JOptionPane.showConfirmDialog(this, "A process is currently running. Do you wish to terminate and exit?");
             if (returnVal == JOptionPane.YES_OPTION) {
                 runner.finish();
