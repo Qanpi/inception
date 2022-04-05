@@ -10,6 +10,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.concurrent.CompletableFuture;
 
@@ -51,15 +52,16 @@ class Console {
         return component.getText();
     }
 
-    static void listen(PrintWriter pw) {
+    static void listen(OutputStream os) {
         Action testAction = new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 String text = component.getText();
-                String input = text.substring(text.lastIndexOf("\n"));
+                String input = text.substring(text.lastIndexOf("\n")+1);
                 System.out.println(input);
-                pw.write(input);
-                pw.flush();
+                PrintWriter pw = new PrintWriter(os, true);
+                pw.println(input);
+                Console.log("");
             }
         };
 

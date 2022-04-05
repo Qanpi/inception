@@ -102,7 +102,7 @@ class Runner {
 //        CompletableFuture<Void> readError = CompletableFuture.runAsync(()-> readErrorStream(pro.getErrorStream()));
 //        CompletableFuture<Void> writeInput = CompletableFuture.runAsync(() -> openOutputStream(pro.getOutputStream()));
 
-        CompletableFuture.runAsync(()-> readInputStream(pro.getInputStream()))
+        CompletableFuture.runAsync(()-> readInputStream(pro))
                 .thenRun(() -> readErrorStream(pro.getErrorStream()));
         CompletableFuture.runAsync(() -> openOutputStream(pro.getOutputStream()));
 
@@ -118,21 +118,25 @@ class Runner {
         }
     }
 
-    private void readInputStream(InputStream is) {
+    private void readInputStream(Process pro) {
+        InputStream is = pro.getInputStream();
         System.out.println("input stream");
         try (Scanner sc = new Scanner(is)) {
-            while (sc.hasNextLine()) {
-                Console.log(sc.nextLine());
+//            wait(3000);
+            while (pro.isAlive()) {
+                if (sc.hasNextLine()) Console.log(sc.nextLine());
             }
+            System.out.println(pro.isAlive());
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
     private void openOutputStream(OutputStream os) {
         System.out.println("output stream");
 
-        PrintWriter pw = new PrintWriter(os);
 //        while (true) System.out.println("test");
-        Console.listen(pw);
+        Console.listen(os);
 
 //        try (Scanner sc = new Scanner(System.in)) {
 //            while(sc.hasNextLine()) System.out.println(sc.nextLine());

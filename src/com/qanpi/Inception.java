@@ -46,6 +46,7 @@ public class Inception extends JFrame implements WindowListener {
 
         //ONLY FOR DEBUG
         try {
+//            loadFile(new File("./src/com/qanpi/New.java"));
             loadFile(new File("./test/src/New.java"));
         } catch (IOException e) {
             e.printStackTrace();
