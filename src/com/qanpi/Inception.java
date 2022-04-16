@@ -21,19 +21,18 @@ public class Inception extends JFrame implements WindowListener {
 
     Inception() {
         super("Inception");
-        //Todo: revise this
-        Console.refocus();
-        Console.setEditable(false);
+
         //Initialize the editor
         editor = new Editor();
         JScrollPane editorScrollPane = new JScrollPane(editor.getComponent());
         editorScrollPane.setPreferredSize(new Dimension(600, 300));
 
         //Initialize the console
-        JScrollPane consoleScrollPane = new JScrollPane(Console.getComponent());
+        Console cl = new Console();
+        JScrollPane consoleScrollPane = new JScrollPane(cl.getComponent());
         consoleScrollPane.setPreferredSize(new Dimension(300, 200));
 
-        //Split pane between editor and console - allows the panes to be resized
+        //Split pane between editor and console
         JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, editorScrollPane, consoleScrollPane);
         splitPane.setOneTouchExpandable(true);
         splitPane.setResizeWeight(1); //so that the console doesn't shrink with the window
@@ -111,7 +110,7 @@ public class Inception extends JFrame implements WindowListener {
                 try {
                     loadFile(f);
                 } catch (IOException e) {
-                    Console.logErr("Error while trying to open file.");
+                    Console.io.printerr("Error while trying to open file.");
                     e.printStackTrace();
                 }
             }
@@ -128,7 +127,7 @@ public class Inception extends JFrame implements WindowListener {
                 try (FileWriter fw = new FileWriter(cf)) {
                     fw.write(editor.getText());
                 } catch (IOException e) {
-                    Console.logErr("Unable to save the editor contents to the provided file.");
+                    Console.io.printerr("Unable to save the editor contents to the provided file.");
                     e.printStackTrace();
                 }
             } else {
@@ -165,7 +164,7 @@ public class Inception extends JFrame implements WindowListener {
                 try (FileWriter fw = new FileWriter(f)) {
                     fw.write(editor.getText());
                 } catch (IOException e) {
-                    Console.logErr("Unable to save the editor contents to the provided file.");
+                    Console.io.printerr("Unable to save the editor contents to the provided file.");
                     e.printStackTrace();
                 }
 
@@ -185,14 +184,14 @@ public class Inception extends JFrame implements WindowListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            Console.clear();
+            Console.io.clear();
             toggleStopButton();
-            Console.setEditable(true);
+            Console.io.setEditable(true);
             process = CompletableFuture.runAsync(() -> runner.run(editor.getCurrentFile()));
             process.thenRun(() -> {
                 runner.finish();
                 toggleStopButton();
-                Console.setEditable(false);
+                Console.io.setEditable(false);
             });
         }
     }
@@ -220,7 +219,7 @@ public class Inception extends JFrame implements WindowListener {
                     try {
                         UIManager.setLookAndFeel(info.getClassName());
                     } catch (ClassNotFoundException | UnsupportedLookAndFeelException | IllegalAccessException | InstantiationException ex) {
-                        Console.logErr("The selected theme is not supported.");
+                        Console.io.printerr("The selected theme is not supported.");
                         ex.printStackTrace();
                     }
                     break;

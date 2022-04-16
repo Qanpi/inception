@@ -3,9 +3,7 @@ package com.qanpi;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
-import java.awt.event.ActionEvent;
 import java.io.*;
-import java.util.Arrays;
 import java.util.Scanner;
 import java.util.concurrent.CompletableFuture;
 //Exception "java.lang.ClassNotFoundException: com/intellij/codeInsight/editorActions/FoldingData"while constructing DataFlavor for: application/x-java-jvm-local-objectref; class=com.intellij.codeInsight.editorActions.FoldingData
@@ -39,7 +37,7 @@ class Runner {
     public void run(File f) {
         //TODO: replace this with project structure
         if(f == null) {
-            Console.logErr("No file is currently open.");
+            Console.io.printerr("No file is currently open.");
             return;
         }
 
@@ -54,7 +52,7 @@ class Runner {
             File compiled = compile(f);
             execute(compiled);
         } catch (IOException | InterruptedException e) {
-            Console.logErr("Failed to execute code.");
+            Console.io.printerr("Failed to execute code.");
         }
     }
 
@@ -68,7 +66,7 @@ class Runner {
                 readErrorStream(pro.getErrorStream());
                 if (pro.exitValue() != 0) return null; //prevents the async chain from being executed if the compilation didn't succeed
             } catch (IOException e) {
-                Console.logErr("Failed to start the compilation process.");
+                Console.io.printerr("Failed to start the compilation process.");
                 e.printStackTrace();
             }
             return new File(f.getParentFile() + "/" + f.getName().replace(".java", ".class")); //TODO: clarify this
@@ -86,7 +84,7 @@ class Runner {
                 packagePath.insert(0, classPath.getName() + ".");
                 classPath = classPath.getParentFile();
             } else {
-                Console.logErr("Please place your .java file in a 'src/' directory");
+                Console.io.printerr("Please place your .java file in a 'src/' directory");
             }
         }
         packagePath = new StringBuilder(packagePath.substring(0, packagePath.length() - 1)); //remove the extra "." at the end of the package path
@@ -94,7 +92,7 @@ class Runner {
         String[] command = {"\"" + java.getCanonicalPath() + "\"", "-cp", "\"" + classPath.getCanonicalPath() + "\"", packagePath.toString()};
         ProcessBuilder pb = new ProcessBuilder(command);
 
-        Console.log(String.join(" ", command));
+        Console.io.println(String.join(" ", command));
         Process pro = pb.start();
         currentProcess = pro;
         //technically this means that the error and input stream will be printed out fully one after the other, but that's also how IntelliJ works
@@ -113,7 +111,7 @@ class Runner {
         System.out.println("error stream");
         try (Scanner sc = new Scanner(is)) {
             while (sc.hasNextLine()) {
-                Console.logErr(sc.nextLine());
+                Console.io.printerr(sc.nextLine());
             }
         }
     }
@@ -124,7 +122,7 @@ class Runner {
         try (Scanner sc = new Scanner(is)) {
 //            wait(3000);
             while (pro.isAlive()) {
-                if (sc.hasNextLine()) Console.log(sc.nextLine());
+                if (sc.hasNextLine()) Console.io.println(sc.nextLine());
             }
             System.out.println(pro.isAlive());
         } catch (Exception e) {
@@ -136,7 +134,7 @@ class Runner {
         System.out.println("output stream");
 
 //        while (true) System.out.println("test");
-        Console.listen(os);
+        Console.io.routeTo(os);
 
 //        try (Scanner sc = new Scanner(System.in)) {
 //            while(sc.hasNextLine()) System.out.println(sc.nextLine());
@@ -147,7 +145,7 @@ class Runner {
         if (currentProcess == null) return;
         currentProcess.descendants().forEach(ProcessHandle::destroy);
         currentProcess.destroy();
-        Console.log(Console.newLine + "Process finished with exit code " + currentProcess.exitValue());
+        Console.io.println(Console.nL + "Process finished with exit code " + currentProcess.exitValue());
         currentProcess = null;
     }
 
