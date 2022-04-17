@@ -4,47 +4,107 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.io.*;
+import java.nio.file.Path;
 import java.util.Scanner;
 import java.util.concurrent.CompletableFuture;
 //Exception "java.lang.ClassNotFoundException: com/intellij/codeInsight/editorActions/FoldingData"while constructing DataFlavor for: application/x-java-jvm-local-objectref; class=com.intellij.codeInsight.editorActions.FoldingData
 
-//TODO: refactor, A LOT
-class Runner {
-    private final OS OS;
-    private final String EXT;
-    private File jdkPath;
-    private Process currentProcess;
+class PathMaker {
+    private String EXTENSION;
+    private File java;
+    private File javac;
 
-    enum OS {
-        Windows,
-        Linux
+    String getJavaPath() {
+        return java.getAbsolutePath();
     }
+
+    String getJavacPath() {
+        return javac.getAbsolutePath();
+    }
+
+    PathMaker () {
+        setExtension();
+        setJavaAndJavac();
+    }
+
+    private void setExtension() {
+        String osName = System.getProperty("os.name");
+        if(osName.startsWith("Windows")) EXTENSION = ".exe";
+        else if (osName.startsWith("Linux")) EXTENSION = "";
+        else throw new RuntimeException("Unsupported operating system."); //tODO:check what throwing the excpetion does
+    }
+
+    private void setJavaAndJavac() {
+        File jdkPath = searchForJDK();
+        if (jdkPath == null) manualPathToJDK();
+
+        javac = new File(jdkPath + "/bin/javac" + EXTENSION);
+        java = new File(jdkPath + "/bin/java");
+    }
+
+    private File searchForJDK() {
+        final String[] commonPaths = {
+                System.getProperty("user.home") + "/.jdks/",
+                "C:/Program Files/Java/",
+                "C:/Program Files (x86)/Java/"
+        };
+
+        for (String path : commonPaths) {
+            File baseDir = new File(path);
+            //skip if not a directory
+            if(!baseDir.isDirectory() || baseDir.listFiles() == null) continue;
+
+            //list all directories (presumably the jdk directories)
+            File[] jdks = baseDir.listFiles(File::isDirectory);
+            for (int i=0; i < jdks.length; i++) {
+                File jdk = jdks[i];
+                File java = new File(jdk + "/bin/java" + EXTENSION),
+                     javac = new File(jdk + "/bin/javac" + EXTENSION);
+
+                if (java.exists() && javac.exists()) return jdk;
+            }
+        }
+        return null;
+    }
+
+    private File manualPathToJDK() {
+        JFileChooser fc = new JFileChooser();
+        fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        fc.setDialogTitle("Please provide a path to the JDK folder");
+
+        //Loop until valid jdk path entered
+        int returnVal = fc.showOpenDialog(null);
+        while (returnVal == JFileChooser.APPROVE_OPTION) {
+            File dir = fc.getSelectedFile();
+            File java = new File(dir + "/bin/java" + EXTENSION), javac = new File(dir + "/bin/javac" + EXTENSION);
+
+            if (java.exists() && javac.exists())
+                return dir;
+            else {
+                JOptionPane.showMessageDialog(
+                        fc,
+                        "Please provide a path to the JDK folder which contains a 'bin' directory with java and javac executables.",
+                        "Invalid path",
+                        JOptionPane.ERROR_MESSAGE);
+                returnVal = fc.showOpenDialog(null);
+            }
+        }
+        return null;
+    }
+}
+
+class Runner {
+    private Process currentProcess;
+    final private PathMaker pm;
 
     Runner () {
-        OS = getOS();
-        EXT = (OS == OS.Windows) ? ".exe" : "";
-        searchForJDK();
-    }
-
-    private OS getOS() {
-        //Determine and store the OS of the user
-        String osName = System.getProperty("os.name");
-        if(osName.startsWith("Windows")) return OS.Windows;
-        else if (osName.startsWith("Linux")) return OS.Linux;
-        else throw new RuntimeException("Unsupported operating system.");
+        pm = new PathMaker();
     }
 
     public void run(File f) {
         //TODO: replace this with project structure
         if(f == null) {
             Console.io.printerr("No file is currently open.");
-            return;
-        }
-
-        if (jdkPath == null) {
-            JOptionPane.showMessageDialog(null, "Please provide the path to the JDK folder manually.",
-                    "Path not found", JOptionPane.ERROR_MESSAGE);
-            manualPathToJDK();
             return;
         }
 
@@ -57,23 +117,26 @@ class Runner {
     }
 
     private File compile(File f) {
-            File javac = new File(jdkPath + "/bin/javac" + EXT);
-            String[] command = {javac.getAbsolutePath(), f.getAbsolutePath()};
+            String[] command = {pm.getJavacPath(), f.getAbsolutePath()};
             ProcessBuilder pb = new ProcessBuilder(command);
 
             try {
                 Process pro = pb.start();
                 readErrorStream(pro.getErrorStream());
-                if (pro.exitValue() != 0) return null; //prevents the async chain from being executed if the compilation didn't succeed
-            } catch (IOException e) {
-                Console.io.printerr("Failed to start the compilation process.");
+                pro.waitFor(); //block the chain until the file is compiled so that the old version of the file is not executed by the next method
+            } catch (IOException | InterruptedException e) {
+                Console.io.printerr("Failed to complete the compilation process.");
                 e.printStackTrace();
             }
-            return new File(f.getParentFile() + "/" + f.getName().replace(".java", ".class")); //TODO: clarify this
+
+            System.out.println(f.getAbsolutePath().replace(".java", ".class"));
+            File compiled = new File(f.getParentFile() + "/" + f.getName().replace(".java", ".class"));
+            System.out.println(f.getParentFile() + "/" + f.getName().replace(".java", ".class"));
+            Console.io.println("test");
+            return compiled; //TODO: clarify this
     }
 
     private void execute(@NotNull File f) throws IOException, InterruptedException {
-        File java = new File(jdkPath + "/bin/java");
         //TODO: maybe split into separate methods
         File classPath = new File(f.getPath().replace(".class", "")); //path to the .class file folder
         StringBuilder packagePath = new StringBuilder(); //e.g. com.company.Class
@@ -89,16 +152,13 @@ class Runner {
         }
         packagePath = new StringBuilder(packagePath.substring(0, packagePath.length() - 1)); //remove the extra "." at the end of the package path
 
-        String[] command = {"\"" + java.getCanonicalPath() + "\"", "-cp", "\"" + classPath.getCanonicalPath() + "\"", packagePath.toString()};
+        String[] command = {"\"" + pm.getJavaPath() + "\"", "-cp", "\"" + classPath.getCanonicalPath() + "\"", packagePath.toString()};
         ProcessBuilder pb = new ProcessBuilder(command);
 
         Console.io.println(String.join(" ", command));
         Process pro = pb.start();
         currentProcess = pro;
-        //technically this means that the error and input stream will be printed out fully one after the other, but that's also how IntelliJ works
-//        CompletableFuture<Void> readInput = CompletableFuture.runAsync(()-> readInputStream(pro.getInputStream()));
-//        CompletableFuture<Void> readError = CompletableFuture.runAsync(()-> readErrorStream(pro.getErrorStream()));
-//        CompletableFuture<Void> writeInput = CompletableFuture.runAsync(() -> openOutputStream(pro.getOutputStream()));
+
 
         CompletableFuture.runAsync(()-> readInputStream(pro))
                 .thenRun(() -> readErrorStream(pro.getErrorStream()));
@@ -145,7 +205,7 @@ class Runner {
         if (currentProcess == null) return;
         currentProcess.descendants().forEach(ProcessHandle::destroy);
         currentProcess.destroy();
-        Console.io.println(Console.nL + "Process finished with exit code " + currentProcess.exitValue());
+        Console.io.println(Console.NEWLINE + "Process finished with exit code " + currentProcess.exitValue());
         currentProcess = null;
     }
 
@@ -153,45 +213,9 @@ class Runner {
         return (currentProcess != null);
     }
 
-    private void searchForJDK() {
-        final String[] commonPaths = {System.getProperty("user.home") + "/.jdks/",
-                "C:/Program Files/Java/",
-                "C:/Program Files (x86)/Java/"};
 
 
-        for (String path : commonPaths) {
-            File baseDir = new File(path);
-            //exit if not a directory
-            if(!baseDir.isDirectory() || baseDir.listFiles() == null) continue;
 
-            File[] jdks = baseDir.listFiles(File::isDirectory);
-            for (int i=0; i < jdks.length; i++) {
-                File jdk = jdks[i];
-                File java = new File(jdk + "/bin/java" + EXT), javac = new File(jdk + "/bin/javac" + EXT);
-
-                if (java.exists() && javac.exists()) jdkPath = jdk;
-            }
-        }
-    }
-
-    private void manualPathToJDK() {
-        JFileChooser fc = new JFileChooser();
-        fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        fc.setDialogTitle("Please provide a path to the JDK folder");
-
-        int returnVal = fc.showOpenDialog(null);
-        while (returnVal == JFileChooser.APPROVE_OPTION) {
-            File dir = fc.getSelectedFile();
-            File java = new File(dir + "/bin/java" + EXT), javac = new File(dir + "/bin/javac" + EXT);
-            if (java.exists() && javac.exists()) jdkPath = dir;
-            else {
-                JOptionPane.showMessageDialog(fc, "Please provide a path to the JDK folder which contains a 'bin' directory with java and javac executables.",
-                        "Invalid path",
-                        JOptionPane.ERROR_MESSAGE);
-                returnVal = fc.showOpenDialog(null);
-            }
-        }
-    }
 }
 
 

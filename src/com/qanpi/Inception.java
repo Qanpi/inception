@@ -11,8 +11,6 @@ import java.util.concurrent.CompletableFuture;
 
 import com.formdev.flatlaf.FlatDarculaLaf;
 
-
-
 public class Inception extends JFrame implements WindowListener {
     private final Editor editor;
     private final Runner runner;

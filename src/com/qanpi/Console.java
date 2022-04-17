@@ -9,10 +9,10 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 
 class Console {
-    final static String nL = System.lineSeparator();
+    final static String NEWLINE = System.lineSeparator();
     static IO io;
 
-    final private JTextPane component;
+    final private JTextPane component; //maybe not going to be final in future
 
     JTextPane getComponent() {
         return component;
@@ -53,7 +53,7 @@ class Console {
         private void println(String msg, SimpleAttributeSet sas) {
             try {
                 Document doc = component.getDocument();
-                doc.insertString(doc.getLength(), msg + nL, sas);
+                doc.insertString(doc.getLength(), msg + NEWLINE, sas);
             } catch (BadLocationException e) {
                 //non-recoverable error as there is no way to indicate it to the user if the console is broken
                 System.err.println("An unknown error occurred when trying to append text to the document.");
@@ -107,19 +107,6 @@ class Console {
             };
 
             component.addKeyListener(routeAction);
-//            Action testAction = new AbstractAction() {
-//                @Override
-//                public void actionPerformed(ActionEvent e) {
-//                    String text = component.getText();
-//                    String input = text.substring(text.lastIndexOf("\n")+1);
-//                    System.out.println(input);
-//                    PrintWriter pw = new PrintWriter(os, true); //this flushing thing caused me such a headache
-//                    pw.println(input);
-//                    Console.log("");
-//                }
-//            };
-//
-//            component.registerKeyboardAction(testAction, KeyStroke.getKeyStroke("ENTER"), JComponent.WHEN_FOCUSED);
         }
 
         void clear() {
