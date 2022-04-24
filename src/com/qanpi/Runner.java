@@ -126,9 +126,9 @@ class Runner {
                 e.printStackTrace();
             }
 
-            System.out.println(f.getAbsolutePath().replace(".java", ".class"));
+            //System.out.println(f.getAbsolutePath().replace(".java", ".class"));
             File compiled = new File(f.getParentFile() + "/" + f.getName().replace(".java", ".class"));
-            System.out.println(f.getParentFile() + "/" + f.getName().replace(".java", ".class"));
+            //System.out.println(f.getParentFile() + "/" + f.getName().replace(".java", ".class"));
             return compiled; //TODO: clarify this
     }
 
@@ -166,7 +166,6 @@ class Runner {
     }
 
     private void readErrorStream(InputStream is) {
-        System.out.println("error stream");
         try (Scanner sc = new Scanner(is)) {
             while (sc.hasNextLine()) {
                 Console.io.printerr(sc.nextLine());
@@ -176,7 +175,6 @@ class Runner {
 
     private void readInputStream(Process pro) {
         InputStream is = pro.getInputStream();
-        System.out.println("input stream");
         try (Scanner sc = new Scanner(is)) {
             while (sc.hasNextLine()) {
                 Console.io.println(sc.nextLine());
@@ -187,7 +185,6 @@ class Runner {
     }
 
     private void openOutputStream(OutputStream outputStream) {
-        System.out.println("output stream");
         Console.io.routeTo(outputStream);
     }
 
