@@ -24,6 +24,7 @@ class Console {
         bindUserInputListener();
 
         io = new IO();
+        io.bindUserOutputWriter();
     }
 
     /**
@@ -33,6 +34,8 @@ class Console {
         KeyListener focusAction = new KeyListener() {
             @Override
             public void keyTyped(KeyEvent e) {
+                if (!Console.io.isEditable()) return;
+
                 int last = component.getDocument().getLength();
                 component.setCaretPosition(last);
             }
@@ -49,7 +52,10 @@ class Console {
         component.addKeyListener(focusAction);
     }
 
+
+
     class IO {
+        private PrintWriter processWriter;
         private void println(String msg, SimpleAttributeSet sas) {
             try {
                 Document doc = component.getDocument();
@@ -73,11 +79,7 @@ class Console {
             println(msg, errorStyle);
         }
 
-        /**
-         * Routs the text entered by the user to a certain OutputStream.
-         * @param os The OutputStream to route text to
-         */
-        void routeTo(OutputStream os) {
+        void bindUserOutputWriter () {
             KeyListener routeAction = new KeyListener() {
                 @Override
                 public void keyTyped(KeyEvent e) {
@@ -86,14 +88,15 @@ class Console {
 
                 @Override
                 public void keyPressed(KeyEvent e) {
+                    if (!isEditable()) return;
+
                     if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                         e.consume(); //prevent from the default Enter key behaviour
 
                         String text = component.getText();
-                        String input = text.substring(text.lastIndexOf("\n")+1);
-                        //if the automatic flushing is not enabled, the text will not get properly sent to the output stream
-                        PrintWriter pw = new PrintWriter(os, true);
-                        pw.println(input);
+                        String userInput = text.substring(text.lastIndexOf("\n")+1);
+
+                        processWriter.println(userInput);
                         println(""); //print a new line in the user console after the input
                     } else if (e.getKeyCode() == KeyEvent.VK_BACK_SPACE) {
                         e.consume();
@@ -109,12 +112,25 @@ class Console {
             component.addKeyListener(routeAction);
         }
 
+        /**
+         * Routs the text entered by the user to a certain OutputStream.
+         * @param outputStream The OutputStream to route text to
+         */
+        void routeTo(OutputStream outputStream) {
+            if (processWriter != null) processWriter.close();
+            processWriter = new PrintWriter(outputStream, true);
+        }
+
         void clear() {
             component.setText("");
         }
 
         void setEditable(boolean b) {
             component.setEditable(b);
+        }
+
+        public boolean isEditable() {
+            return component.isEditable();
         }
     }
 }

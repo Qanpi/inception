@@ -2,7 +2,6 @@ package com.qanpi;
 
 import javax.swing.*;
 import java.io.*;
-import java.nio.file.Path;
 import java.util.Scanner;
 import java.util.concurrent.CompletableFuture;
 //Exception "java.lang.ClassNotFoundException: com/intellij/codeInsight/editorActions/FoldingData"while constructing DataFlavor for: application/x-java-jvm-local-objectref; class=com.intellij.codeInsight.editorActions.FoldingData
@@ -130,7 +129,6 @@ class Runner {
             System.out.println(f.getAbsolutePath().replace(".java", ".class"));
             File compiled = new File(f.getParentFile() + "/" + f.getName().replace(".java", ".class"));
             System.out.println(f.getParentFile() + "/" + f.getName().replace(".java", ".class"));
-            Console.io.println("test");
             return compiled; //TODO: clarify this
     }
 
@@ -162,7 +160,7 @@ class Runner {
                 .thenRun(() -> readErrorStream(pro.getErrorStream()));
         CompletableFuture.runAsync(() -> openOutputStream(pro.getOutputStream()));
 
-        pro.waitFor();
+        pro.waitFor(); //blocks chain until process finishes naturally or is stopped manually
     }
 
     private void readErrorStream(InputStream is) {
@@ -188,32 +186,20 @@ class Runner {
         }
     }
 
-    private void openOutputStream(OutputStream os) {
+    private void openOutputStream(OutputStream outputStream) {
         System.out.println("output stream");
-
-//        while (true) System.out.println("test");
-        Console.io.routeTo(os);
-
-//        try (Scanner sc = new Scanner(System.in)) {
-//            while(sc.hasNextLine()) System.out.println(sc.nextLine());
-//        }
+        Console.io.routeTo(outputStream);
     }
 
     void finish() {
-        if (currentProcess == null) return;
+//        if (currentProcess == null) return; //safety in case the stop button is pressed right after the process ends naturally
+
         currentProcess.descendants().forEach(ProcessHandle::destroy);
         currentProcess.destroy();
+
         Console.io.println(Console.NEWLINE + "Process finished with exit code " + currentProcess.exitValue());
         currentProcess = null;
     }
-
-    boolean isRunning() {
-        return (currentProcess != null);
-    }
-
-
-
-
 }
 
 

@@ -7,6 +7,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.*;
+import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 
 import com.formdev.flatlaf.FlatDarculaLaf;
@@ -14,7 +15,7 @@ import com.formdev.flatlaf.FlatDarculaLaf;
 public class Inception extends JFrame implements WindowListener {
     private final Editor editor;
     private final Runner runner;
-    private JMenuItem stopButton;
+    private JMenuItem runButton;
     private CompletableFuture<Void> process;
 
     Inception() {
@@ -59,12 +60,9 @@ public class Inception extends JFrame implements WindowListener {
         fileMenu.add(new SaveAsAction());
 
         JMenu codeMenu = new JMenu("Code");
-        codeMenu.add(new RunAction());
-
-        stopButton = new JMenuItem("Stop");
-        stopButton.setAction(new StopAction());
-        stopButton.setEnabled(false); //disable by default
-        codeMenu.add(stopButton);
+        runButton = new JMenuItem("Stop");
+        runButton.setAction(new RunAction());
+        codeMenu.add(runButton);
 
         JMenu settingsMenu = new JMenu("Settings");
         JMenu themeMenu = new JMenu("Themes");
@@ -171,9 +169,15 @@ public class Inception extends JFrame implements WindowListener {
         }
     }
 
-    void toggleStopButton() {
-        stopButton.setEnabled(!stopButton.isEnabled());
+    void setRunButton() {
+        runButton.setText("Run");
+        runButton.setAction(new RunAction());
     }
+    void setStopButton() {
+        runButton.setText("Stop");
+        runButton.setAction(new StopAction());
+    }
+    void toggleConsole() {Console.io.setEditable(!Console.io.isEditable());}
 
     class RunAction extends AbstractAction {
         RunAction() {
@@ -182,14 +186,17 @@ public class Inception extends JFrame implements WindowListener {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            Console.io.clear();
-            toggleStopButton();
-            Console.io.setEditable(true);
-            process = CompletableFuture.runAsync(() -> runner.run(editor.getCurrentFile()));
+            Console.io.clear(); //remove previous output
+            setStopButton();
+            toggleConsole();
+
+            File currentFile = editor.getCurrentFile();
+            process = CompletableFuture.runAsync(() -> runner.run(currentFile));
+
             process.thenRun(() -> {
                 runner.finish();
-                toggleStopButton();
-                Console.io.setEditable(false);
+                setRunButton();
+                toggleConsole();
             });
         }
     }
