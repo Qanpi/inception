@@ -1,7 +1,5 @@
 package com.qanpi;
 
-import org.jetbrains.annotations.NotNull;
-
 import javax.swing.*;
 import java.io.*;
 import java.nio.file.Path;
@@ -136,7 +134,7 @@ class Runner {
             return compiled; //TODO: clarify this
     }
 
-    private void execute(@NotNull File f) throws IOException, InterruptedException {
+    private void execute(File f) throws IOException, InterruptedException {
         //TODO: maybe split into separate methods
         File classPath = new File(f.getPath().replace(".class", "")); //path to the .class file folder
         StringBuilder packagePath = new StringBuilder(); //e.g. com.company.Class
