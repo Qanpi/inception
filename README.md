@@ -138,6 +138,12 @@ All resources (I think) are opened, handled and disposed of properly. This inclu
 - rather bad code documentation and clarity
 - some others I can't think of right now
 
+## Todo & Ideas 
+- undo and redo actions
+- code syntax highlighting
+- deleting "tab" aka 4 spaces with backspace
+- custom project structure?
+
 
 
 

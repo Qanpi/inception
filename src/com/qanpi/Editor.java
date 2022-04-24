@@ -51,4 +51,12 @@ class EditorFilter extends DocumentFilter {
         if (text == null) text = ""; //to prevent errors with .setText(null) as pointed out by SOF
         super.replace(fb, offset, length, text.replace("\t", "    "), attrs);
     }
+
+    @Override
+    public void remove(FilterBypass fb, int offset, int length) throws BadLocationException {
+        //TODO: deal with the weirdness
+        if (length == 1 && fb.getDocument().getText(offset - 4, 4).equals("    "))
+            super.remove(fb, offset - 4, 4);
+        super.remove(fb, offset, length);
+    }
 }
