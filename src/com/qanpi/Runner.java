@@ -155,12 +155,14 @@ class Runner {
         Process pro = pb.start();
         currentProcess = pro;
 
-
+        //the error stream will always be printed after all of the input stream,
+        //but that's also how IntelliJ works as far as I can tell
+        //altho this chunk of code could use some refactoring
         CompletableFuture.runAsync(()-> readInputStream(pro))
                 .thenRun(() -> readErrorStream(pro.getErrorStream()));
         CompletableFuture.runAsync(() -> openOutputStream(pro.getOutputStream()));
 
-        pro.waitFor(); //blocks chain until process finishes naturally or is stopped manually
+        pro.waitFor(); //blocks async chain until process finishes naturally or is stopped manually
     }
 
     private void readErrorStream(InputStream is) {
@@ -176,11 +178,9 @@ class Runner {
         InputStream is = pro.getInputStream();
         System.out.println("input stream");
         try (Scanner sc = new Scanner(is)) {
-//            wait(3000);
-            while (pro.isAlive()) {
-                if (sc.hasNextLine()) Console.io.println(sc.nextLine());
+            while (sc.hasNextLine()) {
+                Console.io.println(sc.nextLine());
             }
-            System.out.println(pro.isAlive());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -192,8 +192,8 @@ class Runner {
     }
 
     void finish() {
-//        if (currentProcess == null) return; //safety in case the stop button is pressed right after the process ends naturally
-
+        //if (currentProcess == null) return; //safety in case the stop button is pressed right after the process ends naturally
+        //i think the above is not needed anymore but i'm not sure lmao
         currentProcess.descendants().forEach(ProcessHandle::destroy);
         currentProcess.destroy();
 
