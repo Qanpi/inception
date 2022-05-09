@@ -15,35 +15,30 @@ class Runner {
     }
 
     public void run(File f) {
-        //TODO: replace this with project structure
-        if(f == null) {
-            Console.io.printerr("No file is currently open.");
-            return;
-        }
-
         try {
             File compiled = compile(f);
             if (compiled != null) execute(compiled);
         } catch (IOException | InterruptedException e) {
             Console.io.printerr("Failed to execute code.");
+            e.printStackTrace();
         }
     }
 
     private File compile(File f) {
-            String[] command = {pm.getJavacPath(), f.getAbsolutePath()};
-            ProcessBuilder pb = new ProcessBuilder(command);
+        String[] command = {pm.getJavacPath(), f.getAbsolutePath()};
+        ProcessBuilder pb = new ProcessBuilder(command);
 
-            try {
-                Process pro = pb.start();
-                readErrorStream(pro.getErrorStream());
-                int returnVal = pro.waitFor(); //block the chain until the file is compiled so that the old version of the file is not executed by the next method
-                if (returnVal == 0)
-                    return new File(f.getParentFile() + "/" + f.getName().replace(".java", ".class"));
-            } catch (IOException | InterruptedException e) {
-                Console.io.printerr("Failed to complete the compilation process.");
-                e.printStackTrace();
-            }
-            return null;
+        try {
+            Process pro = pb.start();
+            readErrorStream(pro.getErrorStream());
+            int returnVal = pro.waitFor(); //block the chain until the file is compiled so that the old version of the file is not executed by the next method
+            if (returnVal == 0)
+                return new File(f.getParentFile() + "/" + f.getName().replace(".java", ".class"));
+        } catch (IOException | InterruptedException e) {
+            Console.io.printerr("Failed to complete the compilation process.");
+            e.printStackTrace();
+        }
+        return null;
     }
 
     private void execute(File f) throws IOException, InterruptedException {
@@ -58,7 +53,8 @@ class Runner {
         }
         packagePath = new StringBuilder(packagePath.substring(0, packagePath.length() - 1)); //remove the extra "." at the end of the package path
 
-        String[] command = {"\"" + pm.getJavaPath() + "\"", "-cp", "\"" + classPath.getCanonicalPath() + "\"", packagePath.toString()};
+//        String[] command = {"\"" + pm.getJavaPath() + "\"", "-cp", "\"" + classPath.getCanonicalPath() + "\"", packagePath.toString()};
+        String[] command = {pm.getJavaPath(), "-cp", classPath.getCanonicalPath(), packagePath.toString()};
         ProcessBuilder pb = new ProcessBuilder(command);
 
         Console.io.println(String.join(" ", command));
@@ -99,10 +95,16 @@ class Runner {
     }
 
     void finish() {
-        //if (currentProcess == null) return; //safety in case the stop button is pressed right after the process ends naturally
-        //i think the above is not needed anymore but i'm not sure lmao
+        if (currentProcess == null) return; //safety in case the process was never started
         currentProcess.descendants().forEach(ProcessHandle::destroy);
         currentProcess.destroy();
+
+        try {
+            currentProcess.waitFor();
+        } catch (InterruptedException e) {
+            Console.io.printerr("An interruption occurred while attempting to finish the process.");
+            e.printStackTrace();
+        }
 
         Console.io.println(Console.NEWLINE + "Process finished with exit code " + currentProcess.exitValue());
         currentProcess = null;
