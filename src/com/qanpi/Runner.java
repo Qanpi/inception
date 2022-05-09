@@ -23,7 +23,7 @@ class Runner {
 
         try {
             File compiled = compile(f);
-            execute(compiled);
+            if (compiled != null) execute(compiled);
         } catch (IOException | InterruptedException e) {
             Console.io.printerr("Failed to execute code.");
         }
@@ -36,16 +36,14 @@ class Runner {
             try {
                 Process pro = pb.start();
                 readErrorStream(pro.getErrorStream());
-                pro.waitFor(); //block the chain until the file is compiled so that the old version of the file is not executed by the next method
+                int returnVal = pro.waitFor(); //block the chain until the file is compiled so that the old version of the file is not executed by the next method
+                if (returnVal == 0)
+                    return new File(f.getParentFile() + "/" + f.getName().replace(".java", ".class"));
             } catch (IOException | InterruptedException e) {
                 Console.io.printerr("Failed to complete the compilation process.");
                 e.printStackTrace();
             }
-
-            //System.out.println(f.getAbsolutePath().replace(".java", ".class"));
-            File compiled = new File(f.getParentFile() + "/" + f.getName().replace(".java", ".class"));
-            //System.out.println(f.getParentFile() + "/" + f.getName().replace(".java", ".class"));
-            return compiled; //TODO: clarify this
+            return null;
     }
 
     private void execute(File f) throws IOException, InterruptedException {
@@ -54,13 +52,9 @@ class Runner {
         StringBuilder packagePath = new StringBuilder(); //e.g. com.company.Class
 
         //go up until in the file structure until "src" folder
-        while (!classPath.getName().equals("src")) {
-            if (classPath.getParentFile() != null) {
-                packagePath.insert(0, classPath.getName() + ".");
-                classPath = classPath.getParentFile();
-            } else {
-                Console.io.printerr("Please place your .java file in a 'src/' directory");
-            }
+        while (!classPath.getName().equals("src")) { //assumed to be eventually return, since it was checked to be true when opening the file
+            packagePath.insert(0, classPath.getName() + ".");
+            classPath = classPath.getParentFile();
         }
         packagePath = new StringBuilder(packagePath.substring(0, packagePath.length() - 1)); //remove the extra "." at the end of the package path
 

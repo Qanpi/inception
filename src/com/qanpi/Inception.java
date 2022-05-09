@@ -2,11 +2,17 @@ package com.qanpi;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileFilter;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Style;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyledDocument;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
+import java.awt.event.*;
 import java.io.*;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 
@@ -19,7 +25,8 @@ public class Inception extends JFrame implements WindowListener {
     private CompletableFuture<Void> process;
 
     Inception() {
-        super("Inception");
+        super("Inception - No file open");
+        setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 
         //Initialize the editor
         editor = new Editor();
@@ -41,13 +48,47 @@ public class Inception extends JFrame implements WindowListener {
         addWindowListener(this);
 
         runner = new Runner();
-        //ONLY FOR DEBUG
-        try {
-//            loadFile(new File("./src/com/qanpi/New.java"));
-            loadFile(new File("./test/src/New.java"));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        pack();
+        setVisible(true);
+
+        welcomeMessage();
+    }
+
+    void welcomeMessage() {
+        JLabel link = new JLabel("<HTML><U>GitHub.</U></HTML>");
+        link.setForeground(Color.blue);
+        link.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        link.setToolTipText("https://github.com/Qanpi/inception");
+        link.setAlignmentY(0.75F);
+        link.addMouseListener(new MouseAdapter()
+        {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                try {
+                    Desktop.getDesktop().browse(new URI("https://github.com/Qanpi/inception"));
+                } catch (IOException | URISyntaxException ex) {
+                    ex.printStackTrace();
+                }
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e) {}
+
+            @Override
+            public void mouseExited(MouseEvent e) {}
+        });
+
+        JTextPane textPane = new JTextPane();
+        textPane.setEditable(false);
+        textPane.setPreferredSize(new Dimension(300, 100));
+        textPane.setText("Inception is a small and rugged, but (as I'd like to think) an intuitive and functional Java IDE. \n\n" +
+                "It is not meant for projects or actual use, but more so as a sandbox tool. " +
+                "Feel free to play around and learn more about the project on ");
+        textPane.insertComponent(link);
+
+        JOptionPane.showConfirmDialog(this,
+                textPane,
+                "Welcome!", JOptionPane.DEFAULT_OPTION);
     }
 
     private JMenuBar createMenuBar() {
@@ -61,6 +102,7 @@ public class Inception extends JFrame implements WindowListener {
         JMenu codeMenu = new JMenu("Code");
         runButton = new JMenuItem("Stop");
         runButton.setAction(new RunAction());
+        runButton.setEnabled(false);
         codeMenu.add(runButton);
 
         JMenu settingsMenu = new JMenu("Settings");
@@ -80,7 +122,8 @@ public class Inception extends JFrame implements WindowListener {
 
     private void loadFile(File f) throws IOException {
         editor.openFile(f);
-        setTitle(f.getName());
+        runButton.setEnabled(true);
+        setTitle("Inception - " + f.getName());
     }
 
     class OpenFileAction extends AbstractAction {
@@ -99,10 +142,16 @@ public class Inception extends JFrame implements WindowListener {
             fc.setFileFilter(new JavaExtensionFilter());
             fc.setAcceptAllFileFilterUsed(false);
 
-            int returnVal = fc.showOpenDialog(null);
+            int returnVal = fc.showOpenDialog(Inception.this);
             if (returnVal == JFileChooser.APPROVE_OPTION) {
                 File f = fc.getSelectedFile();
                 try {
+                    if (!f.getCanonicalPath().contains(File.separatorChar + "src" + File.separatorChar)){ //for future purposes when executing
+                        JOptionPane.showMessageDialog(Inception.this,
+                                "Please place your .java file inside a folder named 'src'. Sorry for the inconvenience!",
+                                "Error!", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
                     loadFile(f);
                 } catch (IOException e) {
                     Console.io.printerr("Error while trying to open file.");
@@ -148,7 +197,7 @@ public class Inception extends JFrame implements WindowListener {
             fc.setFileFilter(new JavaExtensionFilter());
             fc.setAcceptAllFileFilterUsed(false);
 
-            int returnVal = fc.showSaveDialog(null);
+            int returnVal = fc.showSaveDialog(Inception.this);
             if (returnVal == JFileChooser.APPROVE_OPTION) {
                 String ext = fc.getFileFilter().getDescription();
                 File f = fc.getSelectedFile();
@@ -172,10 +221,12 @@ public class Inception extends JFrame implements WindowListener {
         runButton.setText("Run");
         runButton.setAction(new RunAction());
     }
+
     void setStopButton() {
         runButton.setText("Stop");
         runButton.setAction(new StopAction());
     }
+
     void toggleConsole() {Console.io.setEditable(!Console.io.isEditable());}
 
     class RunAction extends AbstractAction {
@@ -256,17 +307,8 @@ public class Inception extends JFrame implements WindowListener {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            createAndShowGUI();
+            final JFrame IDE = new Inception();
         });
-    }
-
-    //Open the editor's GUI at startup
-    private static void createAndShowGUI() {
-        final JFrame IDE = new Inception();
-        IDE.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-
-        IDE.pack();
-        IDE.setVisible(true);
     }
 
     @Override

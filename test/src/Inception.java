@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Scanner;
-
+    //comment
 public class Inception extends JFrame {
     private JTextPane editor;
     private Console console;
