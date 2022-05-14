@@ -72,7 +72,7 @@ class Runner {
 
     private static void readErrorStream(InputStream is) {
         try (Scanner sc = new Scanner(is)) {
-            while (sc.hasNextLine() && currentProcess != null) { //prevent from running after the process was terminated
+            while (sc.hasNextLine()) {
                 Console.io.printerr(sc.nextLine());
             }
         }

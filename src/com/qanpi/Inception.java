@@ -78,7 +78,7 @@ public class Inception extends JFrame implements WindowListener {
                 """
                 Inception is a small and rugged, but (as I'd like to think) an intuitive and functional Java IDE.
                 
-                It is not meant for projects or actual use, but more so as a sandbox tool. Feel free to play around and learn more about the project on"""
+                It is not meant for projects or actual use, but more so as a sandbox tool. Feel free to play around and learn more about the project on\s"""
         );
         textPane.insertComponent(link);
 
@@ -357,8 +357,5 @@ class JavaExtensionFilter extends FileFilter {
         return ".java";
     }
 }
-
-
-
 
 

@@ -19,7 +19,6 @@ import java.util.Scanner;
 
 public class Inception extends JFrame implements WindowListener {
     private final Editor editor;
-    private final Runner runner;
     private JMenuItem runButton;
     private CompletableFuture<Void> process;
 
@@ -46,11 +45,10 @@ public class Inception extends JFrame implements WindowListener {
         setJMenuBar(createMenuBar());
         addWindowListener(this);
 
-        runner = new Runner();
         pack();
         setVisible(true);
 
-        welcomeMessage();
+        //welcomeMessage();
     }
 
     void welcomeMessage() {
@@ -79,10 +77,13 @@ public class Inception extends JFrame implements WindowListener {
 
         JTextPane textPane = new JTextPane();
         textPane.setEditable(false);
-        textPane.setPreferredSize(new Dimension(300, 100));
-        textPane.setText("Inception is a small and rugged, but (as I'd like to think) an intuitive and functional Java IDE. \n\n" +
-                "It is not meant for projects or actual use, but more so as a sandbox tool. " +
-                "Feel free to play around and learn more about the project on ");
+        textPane.setPreferredSize(new Dimension(350, 100));
+        textPane.setText(
+                """
+                Inception is a small and rugged, but (as I'd like to think) an intuitive and functional Java IDE.
+                
+                It is not meant for projects or actual use, but more so as a sandbox tool. Feel free to play around and learn more about the project on"""
+        );
         textPane.insertComponent(link);
 
         JOptionPane.showConfirmDialog(this,
@@ -240,10 +241,10 @@ public class Inception extends JFrame implements WindowListener {
             toggleConsole();
 
             File currentFile = editor.getCurrentFile();
-            process = CompletableFuture.runAsync(() -> runner.run(currentFile));
+            process = CompletableFuture.runAsync(() -> Runner.run(currentFile));
 
             process.thenRun(() -> {
-                runner.finish();
+                Runner.finish();
                 setRunButton();
                 toggleConsole();
             });
@@ -294,7 +295,7 @@ public class Inception extends JFrame implements WindowListener {
         // Schedule a job for the event dispatch thread:
         //creating and showing this application's GUI.
         SwingUtilities.invokeLater(() -> {
-            final JFrame IDE = new Inception();
+            new Inception();
         });
     }
 
@@ -306,7 +307,7 @@ public class Inception extends JFrame implements WindowListener {
         if (process != null && !process.isDone()) {
             int returnVal = JOptionPane.showConfirmDialog(this, "A process is currently running. Do you wish to terminate and exit?");
             if (returnVal == JOptionPane.YES_OPTION) {
-                runner.finish();
+                Runner.finish();
                 dispose();
             }
         } else {
@@ -346,271 +347,6 @@ class JavaExtensionFilter extends FileFilter {
     @Override
     public String getDescription() {
         return ".java";
-    }
-}
-
-class Runner {
-    private Process currentProcess;
-    final private PathFinder pm;
-
-    Runner () {
-        pm = new PathFinder();
-    }
-
-    public void run(File f) {
-        try {
-            File compiled = compile(f);
-            if (compiled != null) execute(compiled);
-        } catch (IOException | InterruptedException e) {
-            Console.io.printerr("Failed to execute code.");
-            e.printStackTrace();
-        }
-    }
-
-    private File compile(File f) {
-        String[] command = {pm.getJavacPath(), f.getAbsolutePath()};
-        ProcessBuilder pb = new ProcessBuilder(command);
-
-        try {
-            Process pro = pb.start();
-            readErrorStream(pro.getErrorStream());
-            int returnVal = pro.waitFor(); //block the chain until the file is compiled so that the old version of the file is not executed by the next method
-            if (returnVal == 0)
-                return new File(f.getParentFile() + "/" + f.getName().replace(".java", ".class"));
-        } catch (IOException | InterruptedException e) {
-            Console.io.printerr("Failed to complete the compilation process.");
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    private void execute(File f) throws IOException, InterruptedException {
-        File classPath = new File(f.getPath().replace(".class", "")); //path to the .class file folder
-        StringBuilder packagePath = new StringBuilder(); //e.g. com.company.Class
-
-        //go up until in the file structure until "src" folder
-        while (!classPath.getName().equals("src")) { //assumed to be eventually returned, since it was checked to be true when opening the file
-            packagePath.insert(0, classPath.getName() + ".");
-            classPath = classPath.getParentFile();
-        }
-        packagePath = new StringBuilder(packagePath.substring(0, packagePath.length() - 1)); //remove the extra "." at the end of the package path
-
-        String[] command = {pm.getJavaPath(), "-cp", classPath.getCanonicalPath(), packagePath.toString()};
-        ProcessBuilder pb = new ProcessBuilder(command);
-
-        Console.io.println(String.join(" ", command));
-        Process pro = pb.start();
-        currentProcess = pro;
-
-        //the error stream will always be printed after all of the input stream,
-        //but that's also how IntelliJ works as far as I can tell
-        //altho this chunk of code could use some refactoring
-        CompletableFuture.runAsync(()-> readInputStream(pro))
-                .thenRun(() -> readErrorStream(pro.getErrorStream()));
-        CompletableFuture.runAsync(() -> openOutputStream(pro.getOutputStream()));
-
-        pro.waitFor(); //blocks async chain until process finishes naturally or is stopped manually
-    }
-
-    private void readErrorStream(InputStream is) {
-        try (Scanner sc = new Scanner(is)) {
-            while (sc.hasNextLine()) {
-                Console.io.printerr(sc.nextLine());
-            }
-        }
-    }
-
-    private void readInputStream(Process pro) {
-        InputStream is = pro.getInputStream();
-        try (Scanner sc = new Scanner(is)) {
-            while (sc.hasNextLine()) {
-                Console.io.println(sc.nextLine());
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void openOutputStream(OutputStream outputStream) {
-        Console.io.routeTo(outputStream);
-    }
-
-    void finish() {
-        if (currentProcess == null) return; //safety in case the process was never started
-        currentProcess.descendants().forEach(ProcessHandle::destroy);
-        currentProcess.destroy();
-
-        try {
-            currentProcess.waitFor();
-        } catch (InterruptedException e) {
-            Console.io.printerr("An interruption occurred while attempting to finish the process.");
-            e.printStackTrace();
-        }
-
-        Console.io.println(Console.NEWLINE + "Process finished with exit code " + currentProcess.exitValue());
-        currentProcess = null;
-    }
-}
-
-
-class PathFinder {
-    private String EXTENSION;
-    private File java;
-    private File javac;
-
-    String getJavaPath() {
-        return java.getAbsolutePath();
-    }
-
-    String getJavacPath() {
-        return javac.getAbsolutePath();
-    }
-
-    PathFinder () {
-        setExtension();
-        setJavaAndJavac();
-    }
-
-    private void setExtension() {
-        String osName = System.getProperty("os.name");
-        if(osName.startsWith("Windows")) EXTENSION = ".exe";
-        else if (osName.startsWith("Linux")) EXTENSION = "";
-        else throw new RuntimeException("Unsupported operating system."); //tODO:check what throwing the excpetion does
-    }
-
-    private void setJavaAndJavac() {
-        File jdkPath = searchForJDK();
-        if (jdkPath == null) jdkPath = manualPathToJDK();
-
-        javac = new File(jdkPath + "/bin/javac" + EXTENSION);
-        java = new File(jdkPath + "/bin/java");
-    }
-
-    private File searchForJDK() {
-        final String[] commonPaths = {
-                System.getProperty("user.home") + "/.jdks/c",
-                "C:/Program Files/Java/c",
-                "C:/Program Files (x86)/Java/c"
-        };
-
-        for (String path : commonPaths) {
-            File baseDir = new File(path);
-            //skip if not a directory
-            if(!baseDir.isDirectory() || baseDir.listFiles() == null) continue;
-
-            //list all directories (presumably the jdk directories)
-            File[] jdks = baseDir.listFiles(File::isDirectory);
-            for (int i=0; i < jdks.length; i++) {
-                File jdk = jdks[i];
-                File java = new File(jdk + "/bin/java" + EXTENSION),
-                        javac = new File(jdk + "/bin/javac" + EXTENSION);
-
-                if (java.exists() && javac.exists()) return jdk;
-            }
-        }
-        return null;
-    }
-
-    private File manualPathToJDK() {
-        JFileChooser fc = new JFileChooser();
-        fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        fc.setDialogTitle("Please provide a path to the JDK folder");
-
-        //Loop until valid jdk path entered
-        int returnVal = fc.showOpenDialog(null);
-        while (returnVal == JFileChooser.APPROVE_OPTION) {
-            File dir = fc.getSelectedFile();
-            File java = new File(dir + "/bin/java" + EXTENSION), javac = new File(dir + "/bin/javac" + EXTENSION);
-
-            if (java.exists() && javac.exists())
-                return dir;
-            else {
-                JOptionPane.showMessageDialog(
-                        fc,
-                        "Please provide a path to the JDK folder which contains a 'bin' directory with java and javac executables.",
-                        "Invalid path",
-                        JOptionPane.ERROR_MESSAGE);
-                returnVal = fc.showOpenDialog(null);
-            }
-        }
-        return null;
-    }
-}
-
-class Editor {
-    private File currentFile;
-    final private JTextPane component;
-
-    File getCurrentFile() {
-        return currentFile;
-    }
-
-    JTextPane getComponent() {
-        return component;
-    }
-
-
-    Editor () {
-        component = new JTextPane();
-        updateFilter();
-    }
-
-    void openFile(File f) throws IOException {
-        component.setPage(f.toURI().toURL());
-        updateFilter();
-        currentFile = f;
-    }
-
-    String getText() {
-        return component.getText();
-    }
-
-    private void updateFilter() {
-        Document doc = component.getDocument();
-        ((AbstractDocument) doc).setDocumentFilter(new EditorFilter());
-    }
-
-}
-
-class EditorFilter extends DocumentFilter {
-    final int TAB_SIZE = 4;
-
-    @Override
-    public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
-        super.insertString(fb, offset, string.replace("\t", "    "), attr);
-    }
-
-    @Override
-    public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
-        if (text == null) text = ""; //to prevent errors with .setText(null) as pointed out by SOF
-
-        if(text.equals("\t")) {
-            String pretext = fb.getDocument().getText(0, offset);
-            int lineStart = pretext.lastIndexOf('\n') + 1;
-
-            int filling = TAB_SIZE - (offset - lineStart) % TAB_SIZE; //find the number of characters until the tab column
-            super.replace(fb, offset, length, text.replace("\t", " ".repeat(filling)), attrs);
-            return;
-        }
-        super.replace(fb, offset, length, text.replace("\t", "    "), attrs);
-    }
-
-    @Override
-    public void remove(FilterBypass fb, int offset, int length) throws BadLocationException {
-
-        if (length == 1) { //assuming the backspace is pressed, but also triggered by delete key :(
-            String pretext = fb.getDocument().getText(0, offset);
-            int lineStart = pretext.lastIndexOf('\n') + 1;
-            int rem = (offset - lineStart) % TAB_SIZE; //find the number of characters over the tab column
-
-            String text = fb.getDocument().getText(offset - rem, rem + 1);
-            if (text.isBlank()) {
-                super.remove(fb, offset - rem, rem + 1);
-                return;
-            }
-        }
-
-        super.remove(fb, offset, length);
     }
 }
 
@@ -742,8 +478,263 @@ class Console {
 }
 
 
+class Editor {
+    private File currentFile;
+    final private JTextPane component;
+
+    File getCurrentFile() {
+        return currentFile;
+    }
+
+    JTextPane getComponent() {
+        return component;
+    }
+
+    Editor () {
+        component = new JTextPane();
+        updateFilter();
+    }
+
+    void openFile(File f) throws IOException {
+        component.setPage(f.toURI().toURL());
+        updateFilter();
+        currentFile = f;
+    }
+
+    String getText() {
+        return component.getText();
+    }
+
+    private void updateFilter() {
+        Document doc = component.getDocument();
+        ((AbstractDocument) doc).setDocumentFilter(new EditorFilter());
+    }
+
+}
+
+class EditorFilter extends DocumentFilter {
+    final int TAB_SIZE = 4;
+
+    @Override
+    public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
+        super.insertString(fb, offset, string.replace("\t", "    "), attr);
+    }
+
+    @Override
+    public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
+        if (text == null) text = ""; //to prevent errors with .setText(null) as pointed out by SOF
+
+        if(text.equals("\t")) {
+            String pretext = fb.getDocument().getText(0, offset);
+            int lineStart = pretext.lastIndexOf('\n') + 1;
+
+            int filling = TAB_SIZE - (offset - lineStart) % TAB_SIZE; //find the number of characters until the tab column
+            super.replace(fb, offset, length, text.replace("\t", " ".repeat(filling)), attrs);
+            return;
+        }
+        super.replace(fb, offset, length, text.replace("\t", "    "), attrs);
+    }
+
+    @Override
+    public void remove(FilterBypass fb, int offset, int length) throws BadLocationException {
+
+        if (length == 1) { //assuming the backspace is pressed, but also triggered by delete key :(
+            String pretext = fb.getDocument().getText(0, offset);
+            int lineStart = pretext.lastIndexOf('\n') + 1;
+            int rem = (offset - lineStart) % TAB_SIZE; //find the number of characters over the tab column
+
+            String text = fb.getDocument().getText(offset - rem, rem + 1);
+            if (text.isBlank()) {
+                super.remove(fb, offset - rem, rem + 1);
+                return;
+            }
+        }
+
+        super.remove(fb, offset, length);
+    }
+}
 
 
+class PathFinder {
+    static private File JDK;
 
+    static File getJDK() {
+        if (JDK == null) JDK = searchForJDK();
+        if (JDK == null) JDK = manualPathToJDK();
+        return JDK; //returns null if the previous failed!
+    }
+
+    static String getJavaPath() {
+        File java = new File(JDK + "/bin/java");
+        return java.getAbsolutePath();
+    }
+
+    static String getJavacPath() {
+        File javac = new File(JDK + "/bin/javac" + PathFinder.getExtension());
+        return javac.getAbsolutePath();
+    }
+
+    static private String getExtension() {
+        String osName = System.getProperty("os.name");
+        if(osName.startsWith("Windows")) return ".exe";
+        else if (osName.startsWith("Linux")) return "";
+        else throw new RuntimeException("Unsupported operating system.");
+    }
+
+
+    static private File searchForJDK() {
+        final String[] commonPaths = {
+                System.getProperty("user.home") + "/.jdks/",
+                "C:/Program Files/Java/",
+                "C:/Program Files (x86)/Java/"
+        };
+
+        for (String path : commonPaths) {
+            File baseDir = new File(path);
+            //skip if not a directory
+            if(!baseDir.isDirectory() || baseDir.listFiles() == null) continue;
+
+            //list all directories (presumably the jdk directories)
+            File[] jdks = baseDir.listFiles(File::isDirectory);
+            for (int i=0; i < jdks.length; i++) {
+                File jdk = jdks[i];
+                File java = new File(jdk + "/bin/java" + PathFinder.getExtension()),
+                        javac = new File(jdk + "/bin/javac" + PathFinder.getExtension());
+
+                if (java.exists() && javac.exists()) return jdk;
+            }
+        }
+        return null;
+    }
+
+    private static File manualPathToJDK() {
+        JFileChooser fc = new JFileChooser();
+        fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        fc.setFileHidingEnabled(false);
+        fc.setDialogTitle("Please provide a path to the JDK folder");
+
+        //Loop until valid jdk path entered
+        int returnVal = fc.showOpenDialog(null);
+        while (returnVal == JFileChooser.APPROVE_OPTION) {
+            File dir = fc.getSelectedFile();
+            File java = new File(dir + "/bin/java" + PathFinder.getExtension());
+            File javac = new File(dir + "/bin/javac" + PathFinder.getExtension());
+
+            if (java.exists() && javac.exists()) return dir;
+            else {
+                JOptionPane.showMessageDialog(
+                        fc,
+                        "Please provide a path to the JDK folder which contains a 'bin' directory with java and javac executables.",
+                        "Invalid path",
+                        JOptionPane.ERROR_MESSAGE);
+                returnVal = fc.showOpenDialog(null);
+            }
+        }
+        return null;
+    }
+}
+
+
+class Runner {
+    static private Process currentProcess;
+
+    public static void run(File f) {
+        try {
+            if (PathFinder.getJDK() == null) {
+                Console.io.printerr("Couldn't compile because the path to JDK is undefined.");
+                return;
+            }
+            File compiled = compile(f);
+            if (compiled != null) execute(compiled);
+        } catch (IOException | InterruptedException e) {
+            Console.io.printerr("Failed to execute code.");
+            e.printStackTrace();
+        }
+    }
+
+    private static File compile(File f) {
+        String[] command = {PathFinder.getJavacPath(), f.getAbsolutePath()};
+        ProcessBuilder pb = new ProcessBuilder(command);
+
+        try {
+            Process pro = pb.start();
+            readErrorStream(pro.getErrorStream());
+            int returnVal = pro.waitFor(); //block the chain until the file is compiled so that the old version of the file is not executed by the next method
+            if (returnVal == 0)
+                return new File(f.getParentFile() + "/" + f.getName().replace(".java", ".class"));
+        } catch (IOException | InterruptedException e) {
+            Console.io.printerr("Failed to complete the compilation process.");
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private static void execute(File f) throws IOException, InterruptedException {
+        File classPath = new File(f.getPath().replace(".class", "")); //path to the .class file folder
+        StringBuilder packagePath = new StringBuilder(); //e.g. com.company.Class
+
+        //go up until in the file structure until "src" folder
+        while (!classPath.getName().equals("src")) { //assumed to be eventually returned, since it was checked to be true when opening the file
+            packagePath.insert(0, classPath.getName() + ".");
+            classPath = classPath.getParentFile();
+        }
+        packagePath = new StringBuilder(packagePath.substring(0, packagePath.length() - 1)); //remove the extra "." at the end of the package path
+
+        String[] command = {PathFinder.getJavaPath(), "-cp", classPath.getCanonicalPath(), packagePath.toString()};
+        ProcessBuilder pb = new ProcessBuilder(command);
+
+        Console.io.println(String.join(" ", command));
+        Console.io.println(""); //extra new line
+        Process pro = pb.start();
+        currentProcess = pro;
+
+        //the error stream will always be printed after all of the input stream,
+        //but that's also how IntelliJ works as far as I can tell
+        //altho this chunk of code could use some refactoring
+        CompletableFuture.runAsync(()-> readInputStream(pro))
+                .thenRun(() -> readErrorStream(pro.getErrorStream()));
+        CompletableFuture.runAsync(() -> openOutputStream(pro.getOutputStream()));
+
+        pro.waitFor(); //blocks async chain until process finishes naturally or is stopped manually
+    }
+
+    private static void readErrorStream(InputStream is) {
+        try (Scanner sc = new Scanner(is)) {
+            while (sc.hasNextLine() && currentProcess != null) { //prevent from running after the process was terminated
+                Console.io.printerr(sc.nextLine());
+            }
+        }
+    }
+
+    private static void readInputStream(Process pro) {
+        InputStream is = pro.getInputStream();
+        try (Scanner sc = new Scanner(is)) {
+            while (sc.hasNextLine() && currentProcess != null) { //prevent from running after the process was terminated
+                Console.io.println(sc.nextLine());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void openOutputStream(OutputStream outputStream) {
+        Console.io.routeTo(outputStream);
+    }
+
+    static void finish() {
+        if (currentProcess == null) return; //safety in case the process was never started
+        currentProcess.descendants().forEach(ProcessHandle::destroy);
+        currentProcess.destroy();
+
+        try {
+            int exitVal = currentProcess.waitFor();
+            currentProcess = null;
+            Console.io.println(Console.NEWLINE + "Process finished with exit code " + exitVal);
+        } catch (InterruptedException e) {
+            Console.io.printerr("An interruption occurred while attempting to finish the process.");
+            e.printStackTrace();
+        }
+    }
+}
 
 

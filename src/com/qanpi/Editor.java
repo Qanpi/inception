@@ -5,7 +5,7 @@ import javax.swing.text.*;
 import java.io.File;
 import java.io.IOException;
 
-public class Editor {
+class Editor {
     private File currentFile;
     final private JTextPane component;
 
