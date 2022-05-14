@@ -1,11 +1,11 @@
 package com.qanpi;
 
-import javax.swing.*;
-import java.io.*;
-import java.nio.file.Path;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Scanner;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 class Runner {
     static private Process currentProcess;

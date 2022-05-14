@@ -1,22 +1,17 @@
 package com.qanpi;
 
+import com.formdev.flatlaf.FlatDarculaLaf;
+
 import javax.swing.*;
 import javax.swing.filechooser.FileFilter;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.Style;
-import javax.swing.text.StyleConstants;
-import javax.swing.text.StyledDocument;
 import java.awt.*;
 import java.awt.event.*;
-import java.io.*;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
-
-import com.formdev.flatlaf.FlatDarculaLaf;
 
 public class Inception extends JFrame implements WindowListener {
     private final Editor editor;
@@ -79,9 +74,12 @@ public class Inception extends JFrame implements WindowListener {
         JTextPane textPane = new JTextPane();
         textPane.setEditable(false);
         textPane.setPreferredSize(new Dimension(350, 100));
-        textPane.setText("Inception is a small and rugged, but (as I'd like to think) an intuitive and functional Java IDE. \n\n" +
-                "It is not meant for projects or actual use, but more so as a sandbox tool. " +
-                "Feel free to play around and learn more about the project on ");
+        textPane.setText(
+                """
+                Inception is a small and rugged, but (as I'd like to think) an intuitive and functional Java IDE.
+                
+                It is not meant for projects or actual use, but more so as a sandbox tool. Feel free to play around and learn more about the project on"""
+        );
         textPane.insertComponent(link);
 
         JOptionPane.showConfirmDialog(this,
@@ -305,7 +303,7 @@ public class Inception extends JFrame implements WindowListener {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            final JFrame IDE = new Inception();
+            new Inception();
         });
     }
 

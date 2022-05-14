@@ -2,10 +2,8 @@ package com.qanpi;
 
 import javax.swing.*;
 import javax.swing.text.*;
-import java.awt.*;
 import java.io.File;
 import java.io.IOException;
-import java.util.Enumeration;
 
 public class Editor {
     private File currentFile;
@@ -29,21 +27,6 @@ public class Editor {
         updateFilter();
         currentFile = f;
     }
-
-//    void setTabSpacing() {
-//        TabStop[] tabs = new TabStop[1];
-//        tabs[0] = new TabStop(150, TabStop.ALIGN_LEFT, TabStop.LEAD_NONE);
-//        TabSet tabset = new TabSet(tabs);
-//
-//        SimpleAttributeSet sas = new SimpleAttributeSet();
-//        StyleConstants.setTabSet(sas, tabset);
-//        StyleConstants.setForeground(sas, Color.red);
-//
-//        component.setParagraphAttributes(sas, true);
-//        component.setCharacterAttributes(sas, false);
-//
-//        System.out.println(component.getParagraphAttributes().getAttributeNames().nextElement());
-//    }
 
     String getText() {
         return component.getText();
