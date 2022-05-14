@@ -9,7 +9,7 @@ How much better can it get?
 ### What is this?
 Inception is a semi-light-weight, semi-cross-platform JSwing application that incorporates the command-line
 API in order to compile and execute .java files. In other words, it is a rather simple
-and bare Java IDE that is nonetheless capable of fulfilling the basic tasks of managing
+and bare Java Integrated Development Environment that is nonetheless capable of fulfilling the basic tasks of managing
 and executing Java files.
 
 ### Why is this?
