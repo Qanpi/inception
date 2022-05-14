@@ -17,14 +17,14 @@ This project was originally intended for my computer science course in school. A
 it was rather rough and incomplete. Since then however, I've spent a fair share of time 
 tinkering with it out of enjoyment and will likely continue to do so in the future.
 
-##Examples
+## Examples
 One of my main aims was to make this IDE as intuitive as possible. In fact, my goal was
 to make documentation not necessary in order to play around Inception. This would not only save the user time,
 but would also liberate me from writing a Wikipedia page. I believe that the program fulfills that
 criterion, yet, I'm still going to include a couple of interesting examples in this
 documentation.
 
-###Example 1 - Sum.java
+### Example 1 - Sum.java
 This is a "getting started" example. It will deal with setting up
 the program, opening a file and executing it. Refer to the *Behind the scenes* section if any
 difficulties arise.
@@ -45,7 +45,7 @@ You are now familiar with the basics of using Inception. Feel free to explore ot
 menus in the bar and tinker with the layout, themes, code etc. The next example will
 focus on the essence of this program.
 
-###Example 2 - Inception.java
+### Example 2 - Inception.java
 The name Inception was not coincidental for this project. In fact, I named this 
 program after the famous movie starring Leonardo DiCaprio. The question that I sought
 to answer from the very onset of this project was: What would happen if
@@ -60,7 +60,7 @@ go several layers deeper.
 ![img.png](img/inception.png)
 
 
-##Behind the scenes
+## Behind the scenes
 WIP
 
 ## Ideas & ToDo
