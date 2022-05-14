@@ -20,7 +20,6 @@ import com.formdev.flatlaf.FlatDarculaLaf;
 
 public class Inception extends JFrame implements WindowListener {
     private final Editor editor;
-    private final Runner runner;
     private JMenuItem runButton;
     private CompletableFuture<Void> process;
 
@@ -47,7 +46,6 @@ public class Inception extends JFrame implements WindowListener {
         setJMenuBar(createMenuBar());
         addWindowListener(this);
 
-        runner = new Runner();
         pack();
         setVisible(true);
 
@@ -241,10 +239,10 @@ public class Inception extends JFrame implements WindowListener {
             toggleConsole();
 
             File currentFile = editor.getCurrentFile();
-            process = CompletableFuture.runAsync(() -> runner.run(currentFile));
+            process = CompletableFuture.runAsync(() -> Runner.run(currentFile));
 
             process.thenRun(() -> {
-                runner.finish();
+                Runner.finish();
                 setRunButton();
                 toggleConsole();
             });
@@ -319,7 +317,7 @@ public class Inception extends JFrame implements WindowListener {
         if (process != null && !process.isDone()) {
             int returnVal = JOptionPane.showConfirmDialog(this, "A process is currently running. Do you wish to terminate and exit?");
             if (returnVal == JOptionPane.YES_OPTION) {
-                runner.finish();
+                Runner.finish();
                 dispose();
             }
         } else {

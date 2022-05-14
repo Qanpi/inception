@@ -8,9 +8,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 class Runner {
-    private Process currentProcess;
+    static private Process currentProcess;
 
-    public void run(File f) {
+    public static void run(File f) {
         try {
             if (PathFinder.getJDK() == null) {
                 Console.io.printerr("Couldn't compile because the path to JDK is undefined.");
@@ -24,7 +24,7 @@ class Runner {
         }
     }
 
-    private File compile(File f) {
+    private static File compile(File f) {
         String[] command = {PathFinder.getJavacPath(), f.getAbsolutePath()};
         ProcessBuilder pb = new ProcessBuilder(command);
 
@@ -41,7 +41,7 @@ class Runner {
         return null;
     }
 
-    private void execute(File f) throws IOException, InterruptedException {
+    private static void execute(File f) throws IOException, InterruptedException {
         File classPath = new File(f.getPath().replace(".class", "")); //path to the .class file folder
         StringBuilder packagePath = new StringBuilder(); //e.g. com.company.Class
 
@@ -70,7 +70,7 @@ class Runner {
         pro.waitFor(); //blocks async chain until process finishes naturally or is stopped manually
     }
 
-    private void readErrorStream(InputStream is) {
+    private static void readErrorStream(InputStream is) {
         try (Scanner sc = new Scanner(is)) {
             while (sc.hasNextLine() && currentProcess != null) { //prevent from running after the process was terminated
                 Console.io.printerr(sc.nextLine());
@@ -78,7 +78,7 @@ class Runner {
         }
     }
 
-    private void readInputStream(Process pro) {
+    private static void readInputStream(Process pro) {
         InputStream is = pro.getInputStream();
         try (Scanner sc = new Scanner(is)) {
             while (sc.hasNextLine() && currentProcess != null) { //prevent from running after the process was terminated
@@ -89,11 +89,11 @@ class Runner {
         }
     }
 
-    private void openOutputStream(OutputStream outputStream) {
+    private static void openOutputStream(OutputStream outputStream) {
         Console.io.routeTo(outputStream);
     }
 
-    void finish() {
+    static void finish() {
         if (currentProcess == null) return; //safety in case the process was never started
         currentProcess.descendants().forEach(ProcessHandle::destroy);
         currentProcess.destroy();
