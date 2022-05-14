@@ -4,39 +4,33 @@ import javax.swing.*;
 import java.io.File;
 
 class PathFinder {
-    private String EXTENSION;
-    private File java;
-    private File javac;
+    static private File JDK;
 
-    String getJavaPath() {
+    static File getJDK() {
+        if (JDK == null) JDK = searchForJDK();
+        if (JDK == null) JDK = manualPathToJDK();
+        return JDK; //returns null if the previous failed!
+    }
+
+    static String getJavaPath() {
+        File java = new File(JDK + "/bin/java");
         return java.getAbsolutePath();
     }
 
-    String getJavacPath() {
+    static String getJavacPath() {
+        File javac = new File(JDK + "/bin/javac" + PathFinder.getExtension());
         return javac.getAbsolutePath();
     }
 
-    PathFinder () {
-        setExtension();
-        setJavaAndJavac();
-    }
-
-    private void setExtension() {
+    static private String getExtension() {
         String osName = System.getProperty("os.name");
-        if(osName.startsWith("Windows")) EXTENSION = ".exe";
-        else if (osName.startsWith("Linux")) EXTENSION = "";
-        else throw new RuntimeException("Unsupported operating system."); //tODO:check what throwing the excpetion does
+        if(osName.startsWith("Windows")) return ".exe";
+        else if (osName.startsWith("Linux")) return "";
+        else throw new RuntimeException("Unsupported operating system.");
     }
 
-    private void setJavaAndJavac() {
-        File jdkPath = searchForJDK();
-        if (jdkPath == null) jdkPath = manualPathToJDK();
 
-        javac = new File(jdkPath + "/bin/javac" + EXTENSION);
-        java = new File(jdkPath + "/bin/java");
-    }
-
-    private File searchForJDK() {
+    static private File searchForJDK() {
         final String[] commonPaths = {
                 System.getProperty("user.home") + "/.jdks/",
                 "C:/Program Files/Java/",
@@ -52,8 +46,8 @@ class PathFinder {
             File[] jdks = baseDir.listFiles(File::isDirectory);
             for (int i=0; i < jdks.length; i++) {
                 File jdk = jdks[i];
-                File java = new File(jdk + "/bin/java" + EXTENSION),
-                        javac = new File(jdk + "/bin/javac" + EXTENSION);
+                File java = new File(jdk + "/bin/java" + PathFinder.getExtension()),
+                        javac = new File(jdk + "/bin/javac" + PathFinder.getExtension());
 
                 if (java.exists() && javac.exists()) return jdk;
             }
@@ -61,7 +55,7 @@ class PathFinder {
         return null;
     }
 
-    private File manualPathToJDK() {
+    private static File manualPathToJDK() {
         JFileChooser fc = new JFileChooser();
         fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         fc.setDialogTitle("Please provide a path to the JDK folder");
@@ -70,10 +64,10 @@ class PathFinder {
         int returnVal = fc.showOpenDialog(null);
         while (returnVal == JFileChooser.APPROVE_OPTION) {
             File dir = fc.getSelectedFile();
-            File java = new File(dir + "/bin/java" + EXTENSION), javac = new File(dir + "/bin/javac" + EXTENSION);
+            File java = new File(dir + "/bin/java" + PathFinder.getExtension());
+            File javac = new File(dir + "/bin/javac" + PathFinder.getExtension());
 
-            if (java.exists() && javac.exists())
-                return dir;
+            if (java.exists() && javac.exists()) return dir;
             else {
                 JOptionPane.showMessageDialog(
                         fc,

@@ -5,17 +5,17 @@ import java.io.*;
 import java.nio.file.Path;
 import java.util.Scanner;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 class Runner {
     private Process currentProcess;
-    final private PathFinder pm;
-
-    Runner () {
-        pm = new PathFinder();
-    }
 
     public void run(File f) {
         try {
+            if (PathFinder.getJDK() == null) {
+                Console.io.printerr("Couldn't compile because the path to JDK is undefined.");
+                return;
+            }
             File compiled = compile(f);
             if (compiled != null) execute(compiled);
         } catch (IOException | InterruptedException e) {
@@ -25,7 +25,7 @@ class Runner {
     }
 
     private File compile(File f) {
-        String[] command = {pm.getJavacPath(), f.getAbsolutePath()};
+        String[] command = {PathFinder.getJavacPath(), f.getAbsolutePath()};
         ProcessBuilder pb = new ProcessBuilder(command);
 
         try {
@@ -42,22 +42,21 @@ class Runner {
     }
 
     private void execute(File f) throws IOException, InterruptedException {
-        //TODO: maybe split into separate methods
         File classPath = new File(f.getPath().replace(".class", "")); //path to the .class file folder
         StringBuilder packagePath = new StringBuilder(); //e.g. com.company.Class
 
         //go up until in the file structure until "src" folder
-        while (!classPath.getName().equals("src")) { //assumed to be eventually return, since it was checked to be true when opening the file
+        while (!classPath.getName().equals("src")) { //assumed to be eventually returned, since it was checked to be true when opening the file
             packagePath.insert(0, classPath.getName() + ".");
             classPath = classPath.getParentFile();
         }
         packagePath = new StringBuilder(packagePath.substring(0, packagePath.length() - 1)); //remove the extra "." at the end of the package path
 
-//        String[] command = {"\"" + pm.getJavaPath() + "\"", "-cp", "\"" + classPath.getCanonicalPath() + "\"", packagePath.toString()};
-        String[] command = {pm.getJavaPath(), "-cp", classPath.getCanonicalPath(), packagePath.toString()};
+        String[] command = {PathFinder.getJavaPath(), "-cp", classPath.getCanonicalPath(), packagePath.toString()};
         ProcessBuilder pb = new ProcessBuilder(command);
 
         Console.io.println(String.join(" ", command));
+        Console.io.println(""); //extra new line
         Process pro = pb.start();
         currentProcess = pro;
 
@@ -73,7 +72,7 @@ class Runner {
 
     private void readErrorStream(InputStream is) {
         try (Scanner sc = new Scanner(is)) {
-            while (sc.hasNextLine()) {
+            while (sc.hasNextLine() && currentProcess != null) { //prevent from running after the process was terminated
                 Console.io.printerr(sc.nextLine());
             }
         }
@@ -82,7 +81,7 @@ class Runner {
     private void readInputStream(Process pro) {
         InputStream is = pro.getInputStream();
         try (Scanner sc = new Scanner(is)) {
-            while (sc.hasNextLine()) {
+            while (sc.hasNextLine() && currentProcess != null) { //prevent from running after the process was terminated
                 Console.io.println(sc.nextLine());
             }
         } catch (Exception e) {
@@ -100,14 +99,13 @@ class Runner {
         currentProcess.destroy();
 
         try {
-            currentProcess.waitFor();
+            int exitVal = currentProcess.waitFor();
+            currentProcess = null;
+            Console.io.println(Console.NEWLINE + "Process finished with exit code " + exitVal);
         } catch (InterruptedException e) {
             Console.io.printerr("An interruption occurred while attempting to finish the process.");
             e.printStackTrace();
         }
-
-        Console.io.println(Console.NEWLINE + "Process finished with exit code " + currentProcess.exitValue());
-        currentProcess = null;
     }
 }
 
