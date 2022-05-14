@@ -58,6 +58,7 @@ class PathFinder {
     private static File manualPathToJDK() {
         JFileChooser fc = new JFileChooser();
         fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        fc.setFileHidingEnabled(false);
         fc.setDialogTitle("Please provide a path to the JDK folder");
 
         //Loop until valid jdk path entered
