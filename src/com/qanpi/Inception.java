@@ -78,7 +78,7 @@ public class Inception extends JFrame implements WindowListener {
 
         JTextPane textPane = new JTextPane();
         textPane.setEditable(false);
-        textPane.setPreferredSize(new Dimension(300, 100));
+        textPane.setPreferredSize(new Dimension(350, 100));
         textPane.setText("Inception is a small and rugged, but (as I'd like to think) an intuitive and functional Java IDE. \n\n" +
                 "It is not meant for projects or actual use, but more so as a sandbox tool. " +
                 "Feel free to play around and learn more about the project on ");
