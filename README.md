@@ -17,6 +17,11 @@ This project was originally intended for my computer science course in school. A
 it was rather rough and incomplete. Since then however, I've spent a fair share of time 
 tinkering with it out of enjoyment and will likely continue to do so in the future.
 
+### Technical components
+- GUI through Java Swing
+- process management and input/output
+- directory traversal and file management
+
 ## Examples
 One of my main aims was to make this IDE as intuitive as possible. In fact, my goal was
 to make documentation not necessary in order to play around Inception. This would not only save the user time,
@@ -58,10 +63,6 @@ go several layers deeper.
 4. From the original instance, select *Code* then *Stop* to terminate the process chain.
 
 ![img.png](img/inception.png)
-
-
-## Behind the scenes
-WIP
 
 ## Ideas & ToDo
 - [x] asynchronous execution
